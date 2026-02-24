@@ -1,0 +1,18 @@
+# Compiled files
+*.o
+*.elf
+*.bin
+*.hex
+
+# Arduino build
+build/
+.sketch/
+
+# VSCode
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log
