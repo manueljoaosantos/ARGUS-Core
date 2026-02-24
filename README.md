@@ -41,12 +41,22 @@ ARGUS-Core/
 │   └── src/
 │       └── main.cpp
 │
-├── 04-qtr-8a-line-follow/
+├── 04-motion-core-refactor/
 │   ├── README.md
 │   └── src/
 │       └── main.cpp
 │
-└── 05-raspberry-ai-integration/
+├── 05-non-blocking-control-loop/
+│   ├── README.md
+│   └── src/
+│       └── main.cpp
+│
+├── 06-qtr-8a-line-follow/
+│   ├── README.md
+│   └── src/
+│       └── main.cpp
+│
+└── 07-raspberry-ai-integration/
     ├── README.md
     └── docs/
 ```
@@ -58,22 +68,63 @@ ARGUS-Core/
 ### 01 - Base Motores + Encoders
 
 Controlo direto dos motores com leitura de pulsos e movimento por distância.
+Implementação inicial de aceleração simples e testes de direção.
+
+---
 
 ### 02 - 8 Digital Controlado por Encoder ♾️
 
-Nesta etapa o robô executa um movimento em forma de "8" digital utilizando controlo por pulsos dos encoders.
+Execução de trajetória em forma de "8" utilizando controlo por pulsos.
+Validação de simetria, estabilidade mecânica e consistência dos encoders.
+
+---
 
 ### 03 - Máquina de Estados
 
-Remoção de `delay()` e implementação de controlo temporal com `millis()`.
+Remoção de `delay()` e introdução de controlo baseado em `millis()`.
+Separação de comportamentos (ANDAR / RODAR) e organização da lógica do movimento.
 
-### 04 - Line Following
+---
 
-Integração do sensor Pololu QTR-8A para navegação autónoma.
+### 04 - Motion Control Core (Refatoração Estrutural)
 
-### 05 - Integração com Raspberry Pi
+Reestruturação do sistema de movimento com:
 
-Comunicação e processamento inteligente externo.
+- Separação entre `baseSpeedTarget` e `baseSpeedCurrent`
+- Implementação de rampa independente da correção
+- Estrutura preparada para PID
+- Aplicação final desacoplada:  
+  `left = baseSpeed - correction`  
+  `right = baseSpeed + correction`
+
+Esta etapa estabelece a fundação matemática do controlo diferencial.
+
+---
+
+### 05 - Control Loop Não Bloqueante
+
+Introdução de scheduler fixo (~100Hz) para:
+
+- Atualização consistente de controlo
+- Preparação para sensores de alta frequência
+- Estabilidade futura do PID
+- Arquitetura modular para múltiplos subsistemas
+
+---
+
+### 06 - Line Following (QTR-8A)
+
+Integração do sensor Pololu QTR-8A.
+Cálculo de posição da linha, erro relativo ao centro e correção dinâmica.
+Implementação futura de controlo PID.
+
+---
+
+### 07 - Integração com Raspberry Pi
+
+Comunicação serial com Raspberry Pi.
+Delegação de processamento avançado (AI, visão, estratégia).
+Arquitetura híbrida ESP32 + processamento externo.
 
 ---
 
