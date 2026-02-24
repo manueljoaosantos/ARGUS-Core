@@ -60,64 +60,66 @@ void motores_stop() {
 
 // ===================== MOVIMENTOS =====================
 
+// -------- ANDAR RETO --------
 void andarReto(long alvo) {
 
   resetEncoders();
 
-  digitalWrite(AIN1, HIGH);
-  digitalWrite(AIN2, LOW);
+  // FRENTE (validado)
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, HIGH);
 
-  digitalWrite(BIN1, LOW);
-  digitalWrite(BIN2, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
 
   ledcWrite(PWMA, velReta);
   ledcWrite(PWMB, velReta);
 
-  while (abs(contadorDir) < alvo) {
-    // movimento controlado por encoder
-  }
+  while (abs(contadorDir) < alvo) {}
 
   motores_stop();
   delay(300);
 }
 
+// -------- CURVA DIREITA --------
 void curvaDireita(long alvo) {
 
   resetEncoders();
 
-  digitalWrite(AIN1, HIGH);
-  digitalWrite(AIN2, LOW);
+  // FRENTE
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, HIGH);
 
-  digitalWrite(BIN1, LOW);
-  digitalWrite(BIN2, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
 
-  // Direita mais lenta
+  // Direita mais lenta → curva para direita
   ledcWrite(PWMA, velCurvaRapido);
   ledcWrite(PWMB, velCurvaLento);
 
-  while (abs(contadorDir) < alvo) {
-  }
+  while (abs(contadorDir) < alvo) {}
 
   motores_stop();
   delay(300);
 }
 
+// -------- CURVA ESQUERDA --------
 void curvaEsquerda(long alvo) {
 
   resetEncoders();
 
-  digitalWrite(AIN1, HIGH);
-  digitalWrite(AIN2, LOW);
+  // FRENTE
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, HIGH);
 
-  digitalWrite(BIN1, LOW);
-  digitalWrite(BIN2, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
 
-  // Esquerda mais lenta
+  // Esquerda mais lenta → curva para esquerda
   ledcWrite(PWMA, velCurvaLento);
   ledcWrite(PWMB, velCurvaRapido);
 
-  while (abs(contadorEsq) < alvo) {
-  }
+  while (abs(contadorEsq) < alvo) {}
 
   motores_stop();
   delay(300);
@@ -154,9 +156,9 @@ void loop() {
 
   // Lado direito do 8
   curvaDireita(1200);
-  andarReto(600);
+  andarReto(400);
 
   // Lado esquerdo do 8
   curvaEsquerda(1200);
-  andarReto(600);
+  andarReto(400);
 }
