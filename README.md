@@ -18,6 +18,7 @@ Desenvolver a base móvel inteligente da plataforma ARGUS com arquitetura modula
 
 ## 📂 Estrutura do Projeto
 
+```text
 ARGUS-Core/
 │
 ├── README.md
@@ -25,23 +26,24 @@ ARGUS-Core/
 ├── .gitignore
 │
 ├── 01-base-motores-encoders/
-│ ├── README.md
-│ └── src/
-│ └── main.cpp
+│   ├── README.md
+│   └── src/
+│       └── main.cpp
 │
 ├── 02-maquina-estados/
-│ ├── README.md
-│ └── src/
-│ └── main.cpp
+│   ├── README.md
+│   └── src/
+│       └── main.cpp
 │
 ├── 03-qtr-8a-line-follow/
-│ ├── README.md
-│ └── src/
-│ └── main.cpp
+│   ├── README.md
+│   └── src/
+│       └── main.cpp
 │
 └── 04-raspberry-ai-integration/
-├── README.md
-└── docs/
+    ├── README.md
+    └── docs/
+```
 
 ---
 
