@@ -10,6 +10,7 @@ Desenvolver a base móvel inteligente da plataforma ARGUS com arquitetura modula
 
 - Controlo de motores DC (TB6612FNG)
 - Encoders em quadratura
+- 8 Digital por Encoder
 - Máquina de estados (sem uso de delay)
 - Sensor de linha (QTR-8A)
 - Integração futura com Raspberry Pi e Inteligência Artificial
@@ -30,17 +31,22 @@ ARGUS-Core/
 │   └── src/
 │       └── main.cpp
 │
-├── 02-maquina-estados/
+├── 02-8-digital-encoder/
 │   ├── README.md
 │   └── src/
 │       └── main.cpp
 │
-├── 03-qtr-8a-line-follow/
+├── 03-maquina-estados/
 │   ├── README.md
 │   └── src/
 │       └── main.cpp
 │
-└── 04-raspberry-ai-integration/
+├── 04-qtr-8a-line-follow/
+│   ├── README.md
+│   └── src/
+│       └── main.cpp
+│
+└── 05-raspberry-ai-integration/
     ├── README.md
     └── docs/
 ```
@@ -53,15 +59,19 @@ ARGUS-Core/
 
 Controlo direto dos motores com leitura de pulsos e movimento por distância.
 
-### 02 - Máquina de Estados
+### 02 - 8 Digital Controlado por Encoder ♾️
+
+Nesta etapa o robô executa um movimento em forma de "8" digital utilizando controlo por pulsos dos encoders.
+
+### 03 - Máquina de Estados
 
 Remoção de `delay()` e implementação de controlo temporal com `millis()`.
 
-### 03 - Line Following
+### 04 - Line Following
 
 Integração do sensor Pololu QTR-8A para navegação autónoma.
 
-### 04 - Integração com Raspberry Pi
+### 05 - Integração com Raspberry Pi
 
 Comunicação e processamento inteligente externo.
 
