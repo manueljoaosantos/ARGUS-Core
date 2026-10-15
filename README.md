@@ -63,6 +63,71 @@ ARGUS-Core/
 
 ---
 
+## 🔌 Ligações de Hardware
+
+### 1. Controlador de motores TB6612FNG (HW-048)
+
+O controlo dos dois motores DC é realizado através do controlador TB6612FNG.
+
+#### Sinais de controlo
+
+| Sinal TB6612FNG | GPIO ESP32-S3 | Função             |
+| --------------- | ------------: | ------------------ |
+| PWMA            |       GPIO 12 | PWM do canal A     |
+| AIN1            |        GPIO 4 | Direção do canal A |
+| AIN2            |        GPIO 5 | Direção do canal A |
+| PWMB            |       GPIO 15 | PWM do canal B     |
+| BIN1            |       GPIO 13 | Direção do canal B |
+| BIN2            |       GPIO 14 | Direção do canal B |
+
+#### Alimentação
+
+| Pino | Ligação     | Observações                                                                                             |
+| ---- | ----------- | ------------------------------------------------------------------------------------------------------- |
+| VCC  | 3,3 V       | Alimentação lógica                                                                                      |
+| VM   | 5 V         | Alimentação dos motores; confirmar a compatibilidade com os motores e a capacidade de corrente da fonte |
+| GND  | Massa comum | Referência comum entre ESP32-S3 e controlador                                                           |
+| NC   | Sem ligação | Não ligar                                                                                               |
+
+**Nota:** a origem dos 5 V aplicados a VM deve ser documentada quando estiver confirmada.
+
+#### Saídas para os motores
+
+| Saída     | Motor/lado     |
+| --------- | -------------- |
+| AO1 / AO2 | Motor direito  |
+| BO1 / BO2 | Motor esquerdo |
+
+A correspondência do sentido de rotação deve ser validada durante os testes de movimento.
+
+### 2. Encoders
+
+Os encoders permitem medir a rotação das rodas e suportar o controlo de movimento por pulsos.
+
+| Encoder  | Sinal | GPIO ESP32-S3 |
+| -------- | ----- | ------------: |
+| Esquerdo | C1    |       GPIO 21 |
+| Esquerdo | C2    |       GPIO 42 |
+| Direito  | C1    |       GPIO 16 |
+| Direito  | C2    |       GPIO 17 |
+
+### 3. Configuração no firmware
+
+A configuração dos pinos encontra-se em:
+
+`include/argus/ArgusConfig.h`
+
+A cablagem física e as definições do firmware devem permanecer sincronizadas. Qualquer alteração aos GPIO deve ser refletida neste documento.
+
+### 4. Estado da validação do hardware
+
+- [x] Firmware compilado e carregado no ESP32-S3.
+- [x] Inicialização confirmada através do monitor série.
+- [x] Movimento dos motores confirmado.
+- [x] Leitura dos encoders durante o movimento confirmada.
+- [ ] Sentido de rotação de cada roda validado.
+- [ ] Alimentação dos motores e corrente disponível verificadas.
+
 ## 🧩 Fases de Desenvolvimento
 
 ### 01 - Base Motores + Encoders
