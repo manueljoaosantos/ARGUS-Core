@@ -1,4 +1,4 @@
-# Credenciais (NÃO commitar!)
+# Credenciais
 include/argus/secrets.h
 
 # Build
@@ -6,13 +6,16 @@ include/argus/secrets.h
 build/
 *.old
 
-# Logs e debug
+# Logs
 *.txt
 !README.md
 !CHANGELOG.md
 
 # Scripts temporários
 *.ps1
+
+# VS Code
+.vscode/
 
 # Sistema
 .DS_Store
