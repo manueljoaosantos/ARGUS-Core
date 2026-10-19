@@ -137,12 +137,16 @@ namespace
 void setup()
 {
     // Inicia a telemetria Wi-Fi (usa as credenciais de secrets.h)
-    ArgusTelemetry::begin();
     Serial.begin(115200);
     delay(1500);
+    Serial.println("=== ARGUS ===");
+
+    // Iniciar telemetria (DEPOIS do Serial)
+    ArgusTelemetry::begin();
+    Serial.println("Telemetria OK");
 
     Serial.println();
-    Serial.println("=== ARGUS: Segue Linha (v1.3 — Rampa + PWM 100) ===");
+    Serial.println("=== ARGUS v1.4 — COM TELEMETRIA ===");
 
     ArgusEncoders::begin();
     ArgusMotors::begin();

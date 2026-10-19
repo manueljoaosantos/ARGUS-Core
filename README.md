@@ -13,6 +13,7 @@ Desenvolver a base móvel inteligente da plataforma ARGUS com arquitetura modula
 - Sensor de linha (QTR-8A)
 - Controlo de velocidade com PID + Feedforward
 - Segue linha com deteção de base e recuperação
+- **Telemetria Wi-Fi (Modo Estação + fallback AP)**
 - Máquina de estados (sem uso de delay)
 - Integração futura com Raspberry Pi e Inteligência Artificial
 
@@ -34,7 +35,10 @@ ARGUS-Core/
 │       ├── ArgusEncoders.h
 │       ├── ArgusLineSensors.h
 │       ├── ArgusLineFollower.h
-│       └── ArgusMaze.h
+│       ├── ArgusMaze.h
+│       ├── ArgusTelemetry.h
+│       ├── secrets.h            (ignorado pelo Git)
+│       └── secrets.h.example    (modelo)
 │
 ├── lib/
 │   ├── ArgusConfig/
@@ -42,7 +46,8 @@ ARGUS-Core/
 │   ├── ArgusEncoders/
 │   ├── ArgusLineSensors/
 │   ├── ArgusLineFollower/
-│   └── ArgusMaze/
+│   ├── ArgusMaze/
+│   └── ArgusTelemetry/
 │
 ├── src/
 │   └── main.cpp
@@ -56,10 +61,6 @@ ARGUS-Core/
 ## 🔌 Ligações de Hardware
 
 ### 1. Controlador de motores TB6612FNG (HW-048)
-
-O controlo dos dois motores DC é realizado através do controlador TB6612FNG.
-
-#### Sinais de controlo
 
 | Sinal TB6612FNG | GPIO ESP32-S3 | Função                              |
 | --------------- | ------------: | ----------------------------------- |
@@ -90,8 +91,6 @@ O controlo dos dois motores DC é realizado através do controlador TB6612FNG.
 
 ### 2. Encoders
 
-Os encoders permitem medir a rotação das rodas e suportar o controlo de movimento por pulsos.
-
 | Encoder  | Sinal | GPIO ESP32-S3 |
 | -------- | ----- | ------------: |
 | Esquerdo | C1    |       GPIO 21 |
@@ -99,7 +98,7 @@ Os encoders permitem medir a rotação das rodas e suportar o controlo de movime
 | Direito  | C1    |       GPIO 16 |
 | Direito  | C2    |       GPIO 17 |
 
-> ⚠️ **Nota:** Os encoders estão fisicamente ligados aos motores corretos (esquerdo → motor esquerdo, direito → motor direito). A inversão de sinal foi corrigida no ISR.
+> ⚠️ **Nota:** Os encoders estão fisicamente ligados aos motores corretos. A inversão de sinal foi corrigida no ISR.
 
 ### 3. Sensor de linha QTR-8A
 
@@ -118,11 +117,9 @@ Os encoders permitem medir a rotação das rodas e suportar o controlo de movime
 
 ### 4. Configuração no firmware
 
-A configuração dos pinos encontra-se em:
+A configuração dos pinos encontra-se em: `include/argus/ArgusConfig.h`
 
-`include/argus/ArgusConfig.h`
-
-A cablagem física e as definições do firmware devem permanecer sincronizadas. Qualquer alteração aos GPIO deve ser refletida neste documento.
+A cablagem física e as definições do firmware devem permanecer sincronizadas.
 
 ### 5. Estado da validação do hardware
 
@@ -132,9 +129,70 @@ A cablagem física e as definições do firmware devem permanecer sincronizadas.
 - [x] Leitura dos encoders durante o movimento confirmada.
 - [x] Sentido de rotação de cada roda validado.
 - [x] Encoders contam positivo ao avançar.
-- [x] Motores mapeados corretamente (esquerdo = esquerdo, direito = direito).
+- [x] Motores mapeados corretamente.
 - [x] PID de velocidade funcional (erro < ±5 pulsos/s).
 - [ ] Alimentação dos motores e corrente disponível verificadas.
+
+---
+
+## 🔐 Credenciais Wi-Fi
+
+O projeto usa um ficheiro `secrets.h` para guardar as credenciais Wi-Fi (SSID e password). Este ficheiro **não vai para o Git** (está no `.gitignore`).
+
+**Para configurar:**
+
+1. Copia o ficheiro de exemplo:
+
+   ```bash
+   cp include/argus/secrets.h.example include/argus/secrets.h
+   ```
+
+2. Edita o `secrets.h` com os teus dados:
+
+   ```cpp
+   #define WIFI_SSID     "NomeDaTuaRedeCasa"
+   #define WIFI_PASSWORD "PasswordDaTuaRedeCasa"
+   ```
+
+3. **NÃO commites o `secrets.h`** (o `.gitignore` já o protege).
+
+> ⚠️ **Nota:** O ESP32-S3 só suporta Wi-Fi **2.4 GHz**. Se o teu router tem redes separadas, usa a de 2.4 GHz.
+
+---
+
+## 📡 Telemetria Wi-Fi
+
+O robô liga-se à **rede de casa** (Modo Estação) e serve uma página web com os dados em tempo real.
+
+**Se não conseguir ligar à rede de casa** (ex: password errada), cria um **Access Point de fallback** (`ARGUS-Telemetry`) para não ficares sem acesso.
+
+### Como usar (Modo Estação)
+
+1. O ESP32 liga-se à rede de casa automaticamente.
+2. O Serial Monitor mostra o IP atribuído:
+   ```
+   Ligado! IP: 192.168.1.42
+   ```
+3. Abre o browser em **`http://<IP>`** (no mesmo IP que o Serial mostrou).
+4. Vês os dados a atualizar em tempo real.
+
+### Como usar (Fallback AP)
+
+Se o ESP32 não conseguir ligar à rede de casa:
+
+1. O Serial Monitor mostra:
+   ```
+   Falha ao ligar à rede de casa. A criar Access Point...
+   AP IP: 192.168.4.1
+   ```
+2. Liga-te ao Wi-Fi **`ARGUS-Telemetry`** (password definida no `secrets.h`).
+3. Abre o browser em **`http://192.168.4.1`**.
+
+### Tecnologia
+
+- `ESPAsyncWebServer` + `WebSocket`
+- Página HTML embutida (com UTF-8)
+- Dados enviados a cada 200ms
 
 ---
 
@@ -143,47 +201,30 @@ A cablagem física e as definições do firmware devem permanecer sincronizadas.
 ### 01 - Base Motores + Encoders ✅
 
 Controlo direto dos motores com leitura de pulsos e movimento por distância.
-Implementação inicial de aceleração simples e testes de direção.
 
 ---
 
 ### 02 - 8 Digital Controlado por Encoder ♾️ ✅
 
 Execução de trajetória em forma de "8" utilizando controlo por pulsos.
-Validação de simetria, estabilidade mecânica e consistência dos encoders.
 
 ---
 
 ### 03 - Máquina de Estados ✅
 
 Remoção de `delay()` e introdução de controlo baseado em `millis()`.
-Separação de comportamentos (ANDAR / RODAR) e organização da lógica do movimento.
 
 ---
 
 ### 04 - Motion Control Core (Refatoração Estrutural) ✅
 
-Reestruturação do sistema de movimento com:
-
-- Separação entre `baseSpeedTarget` e `baseSpeedCurrent`
-- Implementação de rampa independente da correção
-- Estrutura preparada para PID
-- Aplicação final desacoplada:
-  `left = baseSpeed - correction`
-  `right = baseSpeed + correction`
-
-Esta etapa estabelece a fundação matemática do controlo diferencial.
+Reestruturação do sistema de movimento com separação entre `baseSpeedTarget` e `baseSpeedCurrent`, rampa independente da correção e estrutura preparada para PID.
 
 ---
 
 ### 05 - Control Loop Não Bloqueante ✅
 
-Introdução de scheduler fixo (~100Hz) para:
-
-- Atualização consistente de controlo
-- Preparação para sensores de alta frequência
-- Estabilidade futura do PID
-- Arquitetura modular para múltiplos subsistemas
+Introdução de scheduler fixo (~100Hz) para atualização consistente de controlo.
 
 ---
 
@@ -213,66 +254,23 @@ Integração do sensor Pololu QTR-8A.
 
 > ⚠️ **Nota crítica:** O sinal da correção foi **invertido** no eixo (`pwmL = PWM_BASE - correction`), após testes empíricos.
 
-> ⚠️ **Nota:** A rampa progressiva evita trancos na aceleração, mantendo o robô estável nas transições reta ↔ curva.
+---
+
+### 07 - Telemetria Wi-Fi ✅ **IMPLEMENTADO**
+
+- Modo Estação (STA): liga à rede de casa
+- Fallback AP: `ARGUS-Telemetry` se falhar
+- Página HTML com UTF-8 (acentos corrigidos)
+- Status de ligação no dashboard
+- Dados em tempo real (POS, erro, correção, PWM, modo)
 
 ---
 
-### 07 - Integração com Raspberry Pi ⏳
+### 08 - Integração com Raspberry Pi ⏳
 
-Comunicação serial com Raspberry Pi.
-Delegação de processamento avançado (AI, visão, estratégia).
-Arquitetura híbrida ESP32 + processamento externo.
+Comunicação serial com Raspberry Pi. Delegação de processamento avançado (AI, visão, estratégia).
 
 ---
-
-### 08 - 🔐 Credenciais Wi-Fi
-
-O projeto usa um ficheiro `secrets.h` para guardar as credenciais Wi-Fi (SSID e password). Este ficheiro **não vai para o Git** (está no `.gitignore`).
-
-**Para configurar:**
-
-1. Copia o ficheiro de exemplo:
-
-   ```bash
-   cp include/argus/secrets.h.example include/argus/secrets.h
-   ```
-
-2. Edita o secrets.h com os teus dados:
-
-```cpp
-#define WIFI_SSID "ARGUS-Telemetry"
-#define WIFI_PASSWORD "argus1234"
-```
-
-NÃO commites o secrets.h (o .gitignore já o protege).
-
----
-
-## 📋 Passo 9 — Testar
-
-1. **Compila e grava.**
-2. **No telemóvel/PC**, procura a rede **`ARGUS-Telemetry`**.
-3. **Liga-te** com a password **`argus1234`**.
-4. **Abre o browser** em **`http://192.168.4.1`**.
-
----
-
-## 📊 Estrutura final
-
-ARGUS-Core/
-├── .gitignore ← atualizado
-├── include/
-│ └── argus/
-│ ├── secrets.h ← NOVO (ignorado pelo Git)
-│ ├── secrets.h.example ← NOVO (vai para o Git)
-│ ├── ArgusTelemetry.h ← NOVO
-│ └── ... (restantes)
-├── lib/
-│ └── ArgusTelemetry/ ← NOVO
-│ └── src/
-│ └── ArgusTelemetry.cpp ← NOVO
-└── src/
-└── main.cpp ← atualizado
 
 ## 🚀 Próximos Passos
 
@@ -282,21 +280,24 @@ ARGUS-Core/
 - [ ] Integrar com `ArgusMaze` (máquina de estados para labirinto)
 - [ ] Adicionar comunicação com Raspberry Pi
 - [ ] Implementar visão computacional / IA
+- [ ] Melhorias na telemetria (botão de reset, velocidade real, bateria, gráfico, ajuste remoto)
 
 ---
 
 ## 🧪 Testes Realizados
 
-| Teste                         | Resultado      |
-| ----------------------------- | -------------- |
-| Motores (PWM direto)          | ✅             |
-| Encoders (contagem)           | ✅             |
-| PID de velocidade (alvo 220)  | ✅ ±5 pulsos/s |
-| Segue linha reta              | ✅             |
-| Segue linha com curvas suaves | ✅             |
-| Deteção de base (`Arrived`)   | ✅             |
-| Recuperação (`Searching`)     | ✅             |
-| Sinal da correção             | ✅ (invertido) |
+| Teste                          | Resultado      |
+| ------------------------------ | -------------- |
+| Motores (PWM direto)           | ✅             |
+| Encoders (contagem)            | ✅             |
+| PID de velocidade (alvo 220)   | ✅ ±5 pulsos/s |
+| Segue linha reta               | ✅             |
+| Segue linha com curvas suaves  | ✅             |
+| Deteção de base (`Arrived`)    | ✅             |
+| Recuperação (`Searching`)      | ✅             |
+| Sinal da correção              | ✅ (invertido) |
+| Telemetria Wi-Fi (STA)         | ✅             |
+| Telemetria Wi-Fi (fallback AP) | ✅             |
 
 ---
 
