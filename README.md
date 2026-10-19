@@ -258,6 +258,15 @@ Integração do sensor Pololu QTR-8A.
 
 ### 07 - Telemetria Wi-Fi ✅ **IMPLEMENTADO**
 
+### Gráfico em tempo real
+
+O dashboard inclui um gráfico (Chart.js) que mostra a evolução do `POS` ao longo do tempo:
+
+- **Linha verde:** POS (0-7000)
+- **Linha amarela tracejada:** centro (3500)
+- **Scroll automático:** máximo de 100 pontos
+- **Responsivo:** adapta-se ao telemóvel e ao PC
+
 ### Dados mostrados no dashboard
 
 | Campo             | Descrição                                                            |

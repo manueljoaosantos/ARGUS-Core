@@ -22,6 +22,32 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [v1.2.4-grafico-tempo-real] - 2026-10-19
+
+### 📊 Gráfico em Tempo Real no Dashboard
+
+### Adicionado
+
+- Gráfico Chart.js no dashboard (POS + linha do centro)
+- Atualização em tempo real (100 pontos, scroll automático)
+- Layout responsivo (adapta-se ao telemóvel e ao PC)
+- Gráfico em cima, dados em baixo (2 colunas)
+
+### Alterado
+
+- `ArgusTelemetry.cpp` com Chart.js (CDN)
+- CSS responsivo com `@media (min-width: 700px)`
+- Chart.js com `responsive: true, maintainAspectRatio: false`
+
+### Testes realizados
+
+- ✅ Gráfico aparece no dashboard
+- ✅ Linha verde mexe em tempo real
+- ✅ Layout responsivo no telemóvel
+- ✅ Layout centralizado no PC
+
+---
+
 ## [v1.2.3-velocidade-real] - 2026-10-19
 
 ### 🏎️ Velocidade Real no Dashboard
@@ -332,20 +358,21 @@ Este projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/):
 
 ## Tags do projeto
 
-| Tag                        | Data       | Descrição                                   |
-| -------------------------- | ---------- | ------------------------------------------- |
-| `v1.2.3-velocidade-real`   | 2026-10-19 | Velocidade real no dashboard                |
-| `v1.2.2-botao-reset`       | 2026-10-19 | Botão de reset na página web                |
-| `v1.2.1-telemetria-wifi`   | 2026-10-19 | Telemetria Wi-Fi (STA + fallback AP)        |
-| `v1.2-telemetria-wifi`     | 2026-10-19 | Telemetria Wi-Fi (versão inicial)           |
-| `v1.1-velocidade-reta`     | 2026-10-19 | Velocidade adaptativa + rampa progressiva   |
-| `v1.0-segue-linha`         | 2026-10-19 | Primeira versão funcional do segue linha    |
-| `v0.9-arquitetura-modular` | 2026-10-15 | Arquitetura modular (libs separadas)        |
-| `v0.8-maze-examples`       | 2026-10-14 | Exemplos de navegação de labirinto          |
-| `v0.7-maze-safe-control`   | 2026-02-24 | Controlo maze-safe (estabilidade em 90°)    |
-| `v0.6-loop-nao-bloqueante` | 2026-02-24 | Loop não bloqueante a 100Hz                 |
-| `v0.5-motion-core`         | 2026-02-24 | Modelo diferencial (baseSpeed ± correction) |
-| `v0.4-maquina-estados`     | 2026-02-24 | Máquina de estados com aceleração suave     |
-| `v0.3-8-digital`           | 2026-02-24 | Movimento em "8" controlado por pulsos      |
-| `v0.2-base-motores`        | 2026-02-24 | README do módulo base motores               |
-| `v0.1-inicial`             | 2026-02-24 | Estrutura inicial do ARGUS-Core             |
+| Tag                         | Data       | Descrição                                   |
+| --------------------------- | ---------- | ------------------------------------------- |
+| `v1.2.4-grafico-tempo-real` | 2026-10-19 | Gráfico em tempo real (Chart.js)            |
+| `v1.2.3-velocidade-real`    | 2026-10-19 | Velocidade real no dashboard                |
+| `v1.2.2-botao-reset`        | 2026-10-19 | Botão de reset na página web                |
+| `v1.2.1-telemetria-wifi`    | 2026-10-19 | Telemetria Wi-Fi (STA + fallback AP)        |
+| `v1.2-telemetria-wifi`      | 2026-10-19 | Telemetria Wi-Fi (versão inicial)           |
+| `v1.1-velocidade-reta`      | 2026-10-19 | Velocidade adaptativa + rampa progressiva   |
+| `v1.0-segue-linha`          | 2026-10-19 | Primeira versão funcional do segue linha    |
+| `v0.9-arquitetura-modular`  | 2026-10-15 | Arquitetura modular (libs separadas)        |
+| `v0.8-maze-examples`        | 2026-10-14 | Exemplos de navegação de labirinto          |
+| `v0.7-maze-safe-control`    | 2026-02-24 | Controlo maze-safe (estabilidade em 90°)    |
+| `v0.6-loop-nao-bloqueante`  | 2026-02-24 | Loop não bloqueante a 100Hz                 |
+| `v0.5-motion-core`          | 2026-02-24 | Modelo diferencial (baseSpeed ± correction) |
+| `v0.4-maquina-estados`      | 2026-02-24 | Máquina de estados com aceleração suave     |
+| `v0.3-8-digital`            | 2026-02-24 | Movimento em "8" controlado por pulsos      |
+| `v0.2-base-motores`         | 2026-02-24 | README do módulo base motores               |
+| `v0.1-inicial`              | 2026-02-24 | Estrutura inicial do ARGUS-Core             |
