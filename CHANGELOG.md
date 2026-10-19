@@ -9,6 +9,44 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Não lançado]
 
+## [v1.1-velocidade-reta] - 2026-10-19
+
+### 🏎️ Velocidade Adaptativa com Rampa Progressiva
+
+### Adicionado
+
+- **Velocidade adaptativa:**
+  - `PWM_BASE_HIGH = 95` (retas)
+  - `PWM_BASE_LOW = 45` (curvas)
+  - `RETA_THRESHOLD = 800` (limiar de erro)
+  - O robô acelera nas retas e abranda nas curvas
+
+- **Rampa progressiva:**
+  - `ACCEL_STEP = 3` (sobe 3 PWM por ciclo de 40ms)
+  - `DECEL_STEP = 8` (desce 8 PWM por ciclo de 40ms)
+  - Aceleração suave (evita trancos)
+  - Travagem rápida (entra nas curvas a tempo)
+
+- **PWM_LIMIT aumentado:**
+  - De `70` para `100` (mais margem de velocidade)
+
+### Alterado
+
+- Parâmetros do segue linha:
+  - `PWM_BASE` substituído por `PWM_BASE_HIGH` e `PWM_BASE_LOW`
+  - `MAX_PWM_CORRECTION = 40` (mantido)
+  - `LINE_KP = 0.04` (mantido)
+
+### Testes realizados
+
+- ✅ Retas rápidas (PWM 95)
+- ✅ Curvas lentas (PWM 45)
+- ✅ Transições suaves (rampa)
+- ✅ Sem oscilação nas retas
+- ✅ Curvas mantidas (sem alterações)
+
+---
+
 ### Adicionado
 
 - Integração com `ArgusMaze` (máquina de estados para labirinto)
@@ -222,15 +260,16 @@ Este projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/):
 
 ## Tags do projeto
 
-| Tag                        | Data           | Descrição                                   |
-| -------------------------- | -------------- | ------------------------------------------- |
-| `v1.0-segue-linha`         | **2026-10-19** | Primeira versão funcional do segue linha    |
-| `v0.9-arquitetura-modular` | **2026-10-15** | Arquitetura modular (libs separadas)        |
-| `v0.8-maze-examples`       | **2026-10-14** | Exemplos de navegação de labirinto          |
-| `v0.7-maze-safe-control`   | **2026-02-24** | Controlo maze-safe (estabilidade em 90°)    |
-| `v0.6-loop-nao-bloqueante` | **2026-02-24** | Loop não bloqueante a 100Hz                 |
-| `v0.5-motion-core`         | **2026-02-24** | Modelo diferencial (baseSpeed ± correction) |
-| `v0.4-maquina-estados`     | **2026-02-24** | Máquina de estados com aceleração suave     |
-| `v0.3-8-digital`           | **2026-02-24** | Movimento em "8" controlado por pulsos      |
-| `v0.2-base-motores`        | **2026-02-24** | README do módulo base motores               |
-| `v0.1-inicial`             | **2026-02-24** | Estrutura inicial do ARGUS-Core             |
+| Tag                        | Data       | Descrição                                   |
+| -------------------------- | ---------- | ------------------------------------------- |
+| `v1.1-velocidade-reta`     | 2026-10-19 | Velocidade adaptativa + rampa progressiva   |
+| `v1.0-segue-linha`         | 2026-10-19 | Primeira versão funcional do segue linha    |
+| `v0.9-arquitetura-modular` | 2026-10-15 | Arquitetura modular (libs separadas)        |
+| `v0.8-maze-examples`       | 2026-10-14 | Exemplos de navegação de labirinto          |
+| `v0.7-maze-safe-control`   | 2026-02-24 | Controlo maze-safe (estabilidade em 90°)    |
+| `v0.6-loop-nao-bloqueante` | 2026-02-24 | Loop não bloqueante a 100Hz                 |
+| `v0.5-motion-core`         | 2026-02-24 | Modelo diferencial (baseSpeed ± correction) |
+| `v0.4-maquina-estados`     | 2026-02-24 | Máquina de estados com aceleração suave     |
+| `v0.3-8-digital`           | 2026-02-24 | Movimento em "8" controlado por pulsos      |
+| `v0.2-base-motores`        | 2026-02-24 | README do módulo base motores               |
+| `v0.1-inicial`             | 2026-02-24 | Estrutura inicial do ARGUS-Core             |

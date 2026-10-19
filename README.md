@@ -199,14 +199,21 @@ Integração do sensor Pololu QTR-8A.
 - Deteção de base (linha larga > 1s)
 - Recuperação (procura a linha durante 2s)
 - Debug configurável (`Motors`, `Sensors`, `All`, `None`)
+- **Velocidade Adaptativa:** retas rápidas (PWM 95), curvas lentas (PWM 45)
+- **Rampa Progressiva:** aceleração suave (+3 PWM/ciclo) e travagem rápida (-8 PWM/ciclo)
 
 **Parâmetros atuais:**
 
 - `LINE_KP = 0.04` (força da correção)
-- `PWM_BASE = 55` (velocidade base)
+- `PWM_BASE_HIGH = 95` (velocidade nas retas)
+- `PWM_BASE_LOW = 45` (velocidade nas curvas)
 - `MAX_PWM_CORRECTION = 40` (correção máxima)
+- `RETA_THRESHOLD = 800` (limiar de erro para considerar reta)
+- `PWM_LIMIT = 100` (limite máximo do hardware)
 
 > ⚠️ **Nota crítica:** O sinal da correção foi **invertido** no eixo (`pwmL = PWM_BASE - correction`), após testes empíricos.
+
+> ⚠️ **Nota:** A rampa progressiva evita trancos na aceleração, mantendo o robô estável nas transições reta ↔ curva.
 
 ---
 

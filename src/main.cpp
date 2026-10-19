@@ -6,7 +6,7 @@
 
 /*
  * ===================================================================
- *  ARGUS — Segue Linha (versão funcional)
+ *  ARGUS — Segue Linha (v1.3 — Rampa Progressiva + PWM Alto)
  * ===================================================================
  *
  *  Arquitetura:
@@ -16,11 +16,15 @@
  *  - Modos: Follow, WideLine, Searching, Stopped, Arrived
  *  - Deteção de base: linha larga durante >1s
  *  - Recuperação: procura a linha durante 2s antes de parar
+ *  - Velocidade Adaptativa: retas rápidas, curvas lentas
+ *  - Rampa Progressiva: aceleração suave para evitar trancos
  *
  *  Parâmetros afinados:
  *  - LINE_KP = 0.04 (força da correção)
- *  - PWM_BASE = 55 (velocidade base)
- *  - MAX_PWM_CORRECTION = 40 (garante que a roda lenta nunca para)
+ *  - PWM_BASE_HIGH = 85 (velocidade máxima nas retas) -> PWM_LIMIT = 100
+ *  - PWM_BASE_LOW = 55 (velocidade mínima nas curvas)
+ *  - RETA_THRESHOLD = 800 (limiar de erro para considerar reta)
+ *  - MAX_PWM_CORRECTION = 45 (garante que a roda lenta nunca para)
  * ===================================================================
  */
 
@@ -29,37 +33,38 @@ namespace
     // ---------------------------------------------------------------
     // Parâmetros do Segue Linha
     // ---------------------------------------------------------------
-    // A "força" da correção. Com 0.04, um erro de 1000 (desvio pequeno)
-    // gera uma correção de 40 PWM.
     constexpr float LINE_KP = 0.04f;
-
-    // Derivativo desligado (evita oscilação causada por ruído dos sensores).
     constexpr float LINE_KD = 0.0f;
 
-    // Velocidade base em PWM (0 a 70).
-    // Ajusta para a velocidade desejada. Valores altos (>60) podem
-    // dificultar as curvas.
-    constexpr int PWM_BASE = 55;
+    // Velocidade nas Curvas (MANTIDA)
+    constexpr int PWM_BASE_LOW = 45;
 
-    // Correção máxima em PWM.
-    // Garante que a roda lenta nunca para: PWM mínimo = 55 - 40 = 15.
-    // Isto evita o efeito de "travão" e a inércia que causava a perda da linha.
+    // Velocidade nas Retas (AUMENTADA progressivamente)
+    // Vamos usar o limite máximo permitido (PWM_LIMIT = 100 no ArgusConfig.h)
+    constexpr int PWM_BASE_HIGH = 95;
+
+    // Limiar de erro para considerar "reta".
+    constexpr float RETA_THRESHOLD = 800.0f;
+
+    // Correção máxima (MANTIDA para as curvas)
     constexpr int MAX_PWM_CORRECTION = 40;
+
+    // ---------------------------------------------------------------
+    // Parâmetros da Rampa Progressiva (Apenas para as retas)
+    // ---------------------------------------------------------------
+    constexpr int ACCEL_STEP = 3;             // Sobe 3 PWM por ciclo (mais rápido a chegar aos 95)
+    constexpr int DECEL_STEP = 8;             // Desce 8 PWM por ciclo (travagem forte ao entrar na curva)
+    constexpr uint32_t RAMP_INTERVAL_MS = 40; // A cada 40ms
 
     // ---------------------------------------------------------------
     // Parâmetros de Recuperação
     // ---------------------------------------------------------------
-    // Tempo máximo que o robô procura a linha antes de parar.
     constexpr uint32_t SEARCH_TIMEOUT_MS = 2000;
-
-    // PWM usado para girar durante a procura.
     constexpr int PWM_SEARCH = 50;
 
     // ---------------------------------------------------------------
     // Deteção de Base
     // ---------------------------------------------------------------
-    // Tempo mínimo em linha larga para considerar que chegou à base.
-    // Se a linha for larga durante >1s, é a base (não um cruzamento).
     constexpr uint32_t BASE_TIMEOUT_MS = 1000;
 
     // ---------------------------------------------------------------
@@ -67,33 +72,30 @@ namespace
     // ---------------------------------------------------------------
     enum class DebugMode
     {
-        None,    // Sem output
-        Motors,  // Só PWM
-        Sensors, // Só posição da linha
-        All      // Tudo
+        None,
+        Motors,
+        Sensors,
+        All
     };
-
-    // ⚙️ ALTERA AQUI O QUE QUERES VER:
     constexpr DebugMode DEBUG_MODE = DebugMode::All;
     constexpr uint32_t DEBUG_INTERVAL_MS = 200;
 
     // ---------------------------------------------------------------
     // Estado Global
     // ---------------------------------------------------------------
-    // Última posição válida (para recuperação).
     float lastKnownPosition = ArgusConfig::CENTER_POSITION;
     uint32_t lastKnownMs = 0;
-
-    // Flags de estado.
     bool wasDetected = false;
     bool searching = false;
     uint32_t searchingSince = 0;
     bool inWideLine = false;
     uint32_t wideLineSince = 0;
     bool arrived = false;
-
-    // Debug.
     uint32_t lastDebugMs = 0;
+
+    // Estado da Rampa
+    int currentPwmBase = PWM_BASE_LOW;
+    uint32_t lastRampMs = 0;
 
     // ---------------------------------------------------------------
     // Função de Debug
@@ -117,17 +119,16 @@ namespace
             return;
         lastDebugMs = now;
 
-        // Sensores
         if (mode == DebugMode::Sensors || mode == DebugMode::All)
         {
             Serial.printf("[%s] linha=%d wide=%d pos=%.0f err=%.0f corr=%.0f\n",
                           modeName, lineDetected, wideLine, position, error, correction);
         }
 
-        // Motores
         if (mode == DebugMode::Motors || mode == DebugMode::All)
         {
-            Serial.printf("[%s] PWM_L=%d PWM_R=%d\n", modeName, pwmL, pwmR);
+            Serial.printf("[%s] PWM_L=%d PWM_R=%d (Base=%d)\n",
+                          modeName, pwmL, pwmR, currentPwmBase);
         }
     }
 }
@@ -138,23 +139,21 @@ void setup()
     delay(1500);
 
     Serial.println();
-    Serial.println("=== ARGUS: Segue Linha (com Recuperação e Base) ===");
+    Serial.println("=== ARGUS: Segue Linha (v1.3 — Rampa + PWM 100) ===");
 
-    // Inicialização dos subsistemas.
     ArgusEncoders::begin();
     ArgusMotors::begin();
     ArgusLineSensors::begin();
 
-    // Configuração inicial dos motores.
     ArgusMotors::setForward();
     ArgusMotors::stop();
 
+    lastRampMs = millis();
     Serial.println("Pronto.");
 }
 
 void loop()
 {
-    // Se chegou à base, para permanentemente.
     if (arrived)
     {
         ArgusMotors::stop();
@@ -177,36 +176,29 @@ void loop()
 
     enum class Mode
     {
-        Follow,    // Seguimento normal
-        WideLine,  // Linha larga (possível cruzamento)
-        Searching, // À procura da linha
-        Stopped,   // Parado (perdeu a linha há muito tempo)
-        Arrived    // Chegou à base
+        Follow,
+        WideLine,
+        Searching,
+        Stopped,
+        Arrived
     };
     Mode mode = Mode::Follow;
 
     if (lineDetected && !wideLine)
     {
-        // ----- Seguimento Normal -----
         mode = Mode::Follow;
         inWideLine = false;
 
-        // Lê a posição da linha e calcula o erro.
         position = ArgusLineSensors::readLinePosition();
         error = position - ArgusConfig::CENTER_POSITION;
 
-        // Controlador Proporcional (P) contínuo.
-        // Reage instantaneamente a QUALQUER desvio, por pequeno que seja.
         correction = LINE_KP * error;
 
-        // Limita a correção para o motor lento nunca parar.
-        // MAX = 40 → PWM mínimo = 55 - 40 = 15 (nunca para).
         if (correction > MAX_PWM_CORRECTION)
             correction = MAX_PWM_CORRECTION;
         if (correction < -MAX_PWM_CORRECTION)
             correction = -MAX_PWM_CORRECTION;
 
-        // Atualiza memória (para recuperação).
         lastKnownPosition = position;
         lastKnownMs = millis();
         wasDetected = true;
@@ -214,7 +206,6 @@ void loop()
     }
     else if (lineDetected && wideLine)
     {
-        // ----- Linha Larga (Cruzamento ou Base) -----
         if (!inWideLine)
         {
             inWideLine = true;
@@ -223,14 +214,11 @@ void loop()
 
         if (millis() - wideLineSince >= BASE_TIMEOUT_MS)
         {
-            // Linha larga durante muito tempo → é a base.
             mode = Mode::Arrived;
             arrived = true;
         }
         else
         {
-            // Linha larga por pouco tempo → é um cruzamento.
-            // Continua em frente.
             mode = Mode::WideLine;
             correction = 0.0f;
         }
@@ -241,19 +229,16 @@ void loop()
     }
     else
     {
-        // ----- Sem Linha -----
         inWideLine = false;
 
         if (wasDetected && !searching)
         {
-            // Acabou de perder a linha.
             searching = true;
             searchingSince = millis();
         }
 
         if (searching && (millis() - searchingSince) < SEARCH_TIMEOUT_MS)
         {
-            // Procura a linha girando para o lado onde ela estava.
             mode = Mode::Searching;
             if (lastKnownPosition < ArgusConfig::CENTER_POSITION)
                 correction = -PWM_SEARCH;
@@ -262,13 +247,44 @@ void loop()
         }
         else
         {
-            // Desistiu de procurar.
             mode = Mode::Stopped;
         }
     }
 
     // ---------------------------------------------------------------
-    // 3. Aplica aos motores
+    // 3. Rampa de velocidade (apenas no modo Follow)
+    // ---------------------------------------------------------------
+    if (mode == Mode::Follow)
+    {
+        const uint32_t now = millis();
+        if (now - lastRampMs >= RAMP_INTERVAL_MS)
+        {
+            lastRampMs = now;
+
+            // Qual é o alvo? (Reta = 85, Curva = 55)
+            const int targetPwm = (fabs(error) < RETA_THRESHOLD) ? PWM_BASE_HIGH : PWM_BASE_LOW;
+
+            if (currentPwmBase < targetPwm)
+            {
+                currentPwmBase += ACCEL_STEP;
+                if (currentPwmBase > targetPwm)
+                    currentPwmBase = targetPwm;
+            }
+            else if (currentPwmBase > targetPwm)
+            {
+                currentPwmBase -= DECEL_STEP;
+                if (currentPwmBase < targetPwm)
+                    currentPwmBase = targetPwm;
+            }
+        }
+    }
+    else
+    {
+        currentPwmBase = PWM_BASE_LOW;
+    }
+
+    // ---------------------------------------------------------------
+    // 4. Aplica aos motores
     // ---------------------------------------------------------------
     int pwmL = 0, pwmR = 0;
     const char *modeName = "";
@@ -276,24 +292,19 @@ void loop()
     switch (mode)
     {
     case Mode::Follow:
-        // ⚠️ SINAL INVERTIDO (descoberto em teste):
-        // Se error > 0 (linha à direita), correction > 0.
-        // Para virar à direita: PWM_L aumenta, PWM_R diminui.
-        // Então INVERTEMOS: pwmL = PWM_BASE - correction; pwmR = PWM_BASE + correction.
-        pwmL = PWM_BASE - (int)correction;
-        pwmR = PWM_BASE + (int)correction;
+        // ⚠️ SINAL INVERTIDO
+        pwmL = currentPwmBase - (int)correction;
+        pwmR = currentPwmBase + (int)correction;
         modeName = "Follow";
         break;
 
     case Mode::WideLine:
-        // Cruzamento: segue em frente.
-        pwmL = PWM_BASE;
-        pwmR = PWM_BASE;
+        pwmL = PWM_BASE_LOW;
+        pwmR = PWM_BASE_LOW;
         modeName = "WideLine";
         break;
 
     case Mode::Searching:
-        // Gira no próprio eixo para procurar.
         if (correction < 0)
         {
             pwmL = 0;
@@ -321,11 +332,9 @@ void loop()
         break;
     }
 
-    // Limita os PWMs ao máximo permitido pelo hardware.
     pwmL = constrain(pwmL, 0, (int)ArgusConfig::PWM_LIMIT);
     pwmR = constrain(pwmR, 0, (int)ArgusConfig::PWM_LIMIT);
 
-    // Aplica o movimento.
     if (mode == Mode::Stopped || mode == Mode::Arrived)
     {
         ArgusMotors::stop();
@@ -337,7 +346,7 @@ void loop()
     }
 
     // ---------------------------------------------------------------
-    // 4. Debug
+    // 5. Debug
     // ---------------------------------------------------------------
     debugPrint(DEBUG_MODE, modeName, lineDetected, wideLine,
                position, error, correction, pwmL, pwmR);
