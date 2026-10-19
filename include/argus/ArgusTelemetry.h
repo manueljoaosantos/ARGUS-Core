@@ -9,5 +9,5 @@ namespace ArgusTelemetry
   void begin();
 
   // Envia os dados para todos os clientes ligados
-  void sendData(float pos, float err, float corr, int pwmL, int pwmR, const char *mode);
+  void sendData(float pos, float err, float corr, int pwmL, int pwmR, float velL, float velR, const char *mode);
 }

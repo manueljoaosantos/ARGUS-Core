@@ -19,6 +19,7 @@
  *  - Recuperação: procura a linha durante 2s antes de parar
  *  - Velocidade Adaptativa: retas rápidas, curvas lentas
  *  - Rampa Progressiva: aceleração suave para evitar trancos
+ *  - Telemetria Wi-Fi com velocidade real
  *
  *  Parâmetros afinados:
  *  - LINE_KP = 0.04 (força da correção)
@@ -99,6 +100,15 @@ namespace
     uint32_t lastRampMs = 0;
 
     // ---------------------------------------------------------------
+    // Estado da Velocidade Real
+    // ---------------------------------------------------------------
+    long prevEncL = 0;
+    long prevEncR = 0;
+    uint32_t prevVelMs = 0;
+    float velL = 0.0f;
+    float velR = 0.0f;
+
+    // ---------------------------------------------------------------
     // Função de Debug
     // ---------------------------------------------------------------
     void debugPrint(
@@ -128,8 +138,8 @@ namespace
 
         if (mode == DebugMode::Motors || mode == DebugMode::All)
         {
-            Serial.printf("[%s] PWM_L=%d PWM_R=%d (Base=%d)\n",
-                          modeName, pwmL, pwmR, currentPwmBase);
+            Serial.printf("[%s] PWM_L=%d PWM_R=%d (Base=%d) | VelL=%.0f VelR=%.0f pulsos/s\n",
+                          modeName, pwmL, pwmR, currentPwmBase, velL, velR);
         }
     }
 }
@@ -146,7 +156,7 @@ void setup()
     Serial.println("Telemetria OK");
 
     Serial.println();
-    Serial.println("=== ARGUS v1.4 — COM TELEMETRIA ===");
+    Serial.println("=== ARGUS v1.4 — COM TELEMETRIA + GRÁFICO ===");
 
     ArgusEncoders::begin();
     ArgusMotors::begin();
@@ -154,6 +164,12 @@ void setup()
 
     ArgusMotors::setForward();
     ArgusMotors::stop();
+
+    // Iniciar contagem de encoders para velocidade
+    ArgusEncoders::reset();
+    prevEncL = 0;
+    prevEncR = 0;
+    prevVelMs = millis();
 
     lastRampMs = millis();
     Serial.println("Pronto.");
@@ -268,7 +284,7 @@ void loop()
         {
             lastRampMs = now;
 
-            // Qual é o alvo? (Reta = 85, Curva = 55)
+            // Qual é o alvo? (Reta = 95, Curva = 45)
             const int targetPwm = (fabs(error) < RETA_THRESHOLD) ? PWM_BASE_HIGH : PWM_BASE_LOW;
 
             if (currentPwmBase < targetPwm)
@@ -353,11 +369,30 @@ void loop()
     }
 
     // ---------------------------------------------------------------
-    // 5. Debug
+    // 5. Cálculo da velocidade real (pulsos/s)
+    // ---------------------------------------------------------------
+    {
+        long r, l;
+        ArgusEncoders::readCounts(r, l);
+
+        const uint32_t now = millis();
+        const uint32_t elapsed = now - prevVelMs;
+        if (elapsed >= 100)
+        {
+            velL = (l - prevEncL) * 1000.0f / elapsed;
+            velR = (r - prevEncR) * 1000.0f / elapsed;
+            prevEncL = l;
+            prevEncR = r;
+            prevVelMs = now;
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // 6. Debug
     // ---------------------------------------------------------------
     debugPrint(DEBUG_MODE, modeName, lineDetected, wideLine,
                position, error, correction, pwmL, pwmR);
 
-    // Envia telemetria para os clientes Wi-Fi
-    ArgusTelemetry::sendData(position, error, correction, pwmL, pwmR, modeName);
+    // Envia telemetria para os clientes Wi-Fi (com velocidade real)
+    ArgusTelemetry::sendData(position, error, correction, pwmL, pwmR, velL, velR, modeName);
 }
