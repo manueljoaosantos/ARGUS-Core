@@ -258,11 +258,25 @@ Integração do sensor Pololu QTR-8A.
 
 ### 07 - Telemetria Wi-Fi ✅ **IMPLEMENTADO**
 
+### Dados mostrados no dashboard
+
+| Campo             | Descrição                                                            |
+| ----------------- | -------------------------------------------------------------------- |
+| **Ligação**       | Estado do WebSocket (Ligado/Desligado)                               |
+| **Modo**          | Modo atual (`Follow`, `WideLine`, `Searching`, `Stopped`, `Arrived`) |
+| **POS**           | Posição da linha (0-7000, centro 3500)                               |
+| **Erro**          | `POS - 3500` (desvio do centro)                                      |
+| **Correção**      | Valor da correção aplicada (`LINE_KP × erro`)                        |
+| **PWM Esq / Dir** | PWM aplicado a cada roda (0-100)                                     |
+| **Vel Esq / Dir** | Velocidade real em pulsos/s (medida pelos encoders)                  |
+
 - Modo Estação (STA): liga à rede de casa
 - Fallback AP: `ARGUS-Telemetry` se falhar
 - Página HTML com UTF-8 (acentos corrigidos)
 - Status de ligação no dashboard
 - Dados em tempo real (POS, erro, correção, PWM, modo)
+- **Botão de Reset** (reinicia o robô via WebSocket)
+- **Velocidade real** (pulsos/s) de cada roda
 
 ---
 

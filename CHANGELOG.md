@@ -9,6 +9,91 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Não lançado]
 
+### Adicionado
+
+- Integração com `ArgusMaze` (máquina de estados para labirinto)
+- Comunicação serial com Raspberry Pi
+- Visão computacional / IA
+
+### Alterado
+
+- Ajuste fino dos parâmetros do segue linha para curvas apertadas
+- Otimização do PID de velocidade
+
+---
+
+## [v1.2.3-velocidade-real] - 2026-10-19
+
+### 🏎️ Velocidade Real no Dashboard
+
+### Adicionado
+
+- Cálculo da velocidade real (pulsos/s) a partir dos encoders
+- Envio de `velL` e `velR` no JSON da telemetria
+- Campos `Vel Esq` e `Vel Dir` no dashboard HTML
+- Atualização da velocidade a cada 100ms (suavização)
+
+### Alterado
+
+- `sendData()` agora recebe `velL` e `velR`
+- `ArgusTelemetry.h` atualizado com a nova assinatura
+- `main.cpp` calcula a velocidade real no `loop()`
+- `debugPrint` mostra `velL` e `velR` no Serial
+
+### Testes realizados
+
+- ✅ Velocidade real aparece no dashboard
+- ✅ Valores atualizam em tempo real
+- ✅ Consistência com o Serial Monitor
+
+---
+
+## [v1.2.2-botao-reset] - 2026-10-19
+
+### 🔄 Botão de Reset na Página Web
+
+### Adicionado
+
+- Botão "🔄 Reiniciar" no dashboard HTML
+- WebSocket envia `"reset"` quando clicado
+- `onWsEvent` trata `WS_EVT_DATA` e chama `ESP.restart()`
+- Permite reiniciar o robô sem carregar no botão EN
+
+### Testes realizados
+
+- ✅ Botão aparece no dashboard
+- ✅ ESP32 reinicia ao clicar
+- ✅ Serial mostra "Comando de RESET recebido!"
+
+---
+
+## [v1.2.1-telemetria-wifi] - 2026-10-19
+
+### 📡 Telemetria Wi-Fi Funcional (STA + fallback AP)
+
+### Adicionado
+
+- **Modo Estação (STA):** o ESP32 liga-se à rede de casa
+- **Fallback AP:** se falhar, cria `ARGUS-Telemetry` como rede de emergência
+- **Página HTML com UTF-8** (acentos corrigidos)
+- **Status de ligação** no dashboard (Ligado/Desligado)
+- **Dados em tempo real** (POS, erro, correção, PWM, modo)
+
+### Alterado
+
+- `ArgusTelemetry::begin()` agora tenta STA primeiro, depois AP
+- `sendData()` é chamado no `loop()` principal e no modo `Arrived`
+
+### Testes realizados
+
+- ✅ Ligação à rede de casa (STA)
+- ✅ Fallback para Access Point
+- ✅ Página HTML abre no browser
+- ✅ Dados atualizam em tempo real
+- ✅ Acentos corrigidos (UTF-8)
+
+---
+
 ## [v1.1-velocidade-reta] - 2026-10-19
 
 ### 🏎️ Velocidade Adaptativa com Rampa Progressiva
@@ -44,19 +129,6 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - ✅ Transições suaves (rampa)
 - ✅ Sem oscilação nas retas
 - ✅ Curvas mantidas (sem alterações)
-
----
-
-### Adicionado
-
-- Integração com `ArgusMaze` (máquina de estados para labirinto)
-- Comunicação serial com Raspberry Pi
-- Visão computacional / IA
-
-### Alterado
-
-- Ajuste fino dos parâmetros do segue linha para curvas apertadas
-- Otimização do PID de velocidade
 
 ---
 
@@ -262,6 +334,10 @@ Este projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/):
 
 | Tag                        | Data       | Descrição                                   |
 | -------------------------- | ---------- | ------------------------------------------- |
+| `v1.2.3-velocidade-real`   | 2026-10-19 | Velocidade real no dashboard                |
+| `v1.2.2-botao-reset`       | 2026-10-19 | Botão de reset na página web                |
+| `v1.2.1-telemetria-wifi`   | 2026-10-19 | Telemetria Wi-Fi (STA + fallback AP)        |
+| `v1.2-telemetria-wifi`     | 2026-10-19 | Telemetria Wi-Fi (versão inicial)           |
 | `v1.1-velocidade-reta`     | 2026-10-19 | Velocidade adaptativa + rampa progressiva   |
 | `v1.0-segue-linha`         | 2026-10-19 | Primeira versão funcional do segue linha    |
 | `v0.9-arquitetura-modular` | 2026-10-15 | Arquitetura modular (libs separadas)        |
