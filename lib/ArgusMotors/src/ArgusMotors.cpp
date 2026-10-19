@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 
 #include "argus/ArgusConfig.h"
@@ -18,9 +17,6 @@ namespace
     float targetLeft = 0.0f;
     float targetRight = 0.0f;
 
-    float rampLeft = 0.0f;
-    float rampRight = 0.0f;
-
     float integralLeft = 0.0f;
     float integralRight = 0.0f;
 
@@ -36,24 +32,6 @@ namespace
 
     int currentLeftPwm = 0;
     int currentRightPwm = 0;
-
-    float approach(float current, float target, float step)
-    {
-        if (current < target)
-        {
-            current += step;
-            if (current > target)
-                current = target;
-        }
-        else if (current > target)
-        {
-            current -= step;
-            if (current < target)
-                current = target;
-        }
-
-        return current;
-    }
 
     int clampPwm(float value)
     {
@@ -105,9 +83,6 @@ namespace
         previousErrorLeft = 0.0f;
         previousErrorRight = 0.0f;
 
-        rampLeft = 0.0f;
-        rampRight = 0.0f;
-
         targetLeft = 0.0f;
         targetRight = 0.0f;
     }
@@ -146,20 +121,24 @@ namespace ArgusMotors
 
     void setForward()
     {
-        digitalWrite(ArgusConfig::AIN1, LOW);
-        digitalWrite(ArgusConfig::AIN2, HIGH);
+        // Canal A = motor DIREITO (lógica invertida após troca de pinos)
+        digitalWrite(ArgusConfig::AIN1, HIGH);
+        digitalWrite(ArgusConfig::AIN2, LOW);
 
-        digitalWrite(ArgusConfig::BIN1, HIGH);
-        digitalWrite(ArgusConfig::BIN2, LOW);
+        // Canal B = motor ESQUERDO (lógica invertida após troca de pinos)
+        digitalWrite(ArgusConfig::BIN1, LOW);
+        digitalWrite(ArgusConfig::BIN2, HIGH);
     }
 
     void setRightRotation()
     {
-        digitalWrite(ArgusConfig::AIN1, LOW);
-        digitalWrite(ArgusConfig::AIN2, HIGH);
+        // Canal A = motor DIREITO
+        digitalWrite(ArgusConfig::AIN1, HIGH);
+        digitalWrite(ArgusConfig::AIN2, LOW);
 
-        digitalWrite(ArgusConfig::BIN1, LOW);
-        digitalWrite(ArgusConfig::BIN2, HIGH);
+        // Canal B = motor ESQUERDO
+        digitalWrite(ArgusConfig::BIN1, HIGH);
+        digitalWrite(ArgusConfig::BIN2, LOW);
     }
 
     void setSpeeds(int leftPwm, int rightPwm)
@@ -172,10 +151,10 @@ namespace ArgusMotors
     void setTargetSpeeds(float leftTarget, float rightTarget)
     {
         targetLeft = constrain(
-            leftTarget, 0.0f, static_cast<float>(ArgusConfig::PWM_LIMIT));
+            leftTarget, 0.0f, ArgusConfig::SPEED_MAX_TARGET);
 
         targetRight = constrain(
-            rightTarget, 0.0f, static_cast<float>(ArgusConfig::PWM_LIMIT));
+            rightTarget, 0.0f, ArgusConfig::SPEED_MAX_TARGET);
 
         if (targetLeft > 0.0f || targetRight > 0.0f)
         {
@@ -187,7 +166,11 @@ namespace ArgusMotors
             return;
         }
 
-        previousUpdateMs = millis();
+        // ⚠️ NÃO ATUALIZAR previousUpdateMs AQUI!
+        // Se atualizarmos aqui, o PID nunca corre porque o loop
+        // chama setTargetSpeeds() a cada iteração (menos de 10ms).
+        // O previousUpdateMs só deve ser atualizado no updateSpeedControl().
+        // (Este foi o bug que manteve os motores parados durante muito tempo).
     }
 
     void updateSpeedControl()
@@ -198,6 +181,9 @@ namespace ArgusMotors
         const uint32_t now = millis();
         const uint32_t elapsedMs = now - previousUpdateMs;
 
+        // ⚠️ O PID só corre a cada CONTROL_INTERVAL_MS.
+        // O previousUpdateMs só é atualizado AQUI (nunca em setTargetSpeeds).
+        // Isto é CRÍTICO para o PID funcionar.
         if (elapsedMs < ArgusConfig::CONTROL_INTERVAL_MS)
             return;
 
@@ -215,34 +201,28 @@ namespace ArgusMotors
         previousLeftTicks = leftTicks;
         previousRightTicks = rightTicks;
 
-        // Medição em impulsos por segundo.
+        // Velocidade medida em pulsos/s.
         const float measuredLeft = deltaLeft / dt;
         const float measuredRight = deltaRight / dt;
 
-        // Rampa aplicada aos alvos de PWM.
-        rampLeft = approach(
-            rampLeft,
-            targetLeft,
-            static_cast<float>(ArgusConfig::ACCEL_STEP));
-
-        rampRight = approach(
-            rampRight,
-            targetRight,
-            static_cast<float>(ArgusConfig::ACCEL_STEP));
-
-        // A escala inicial usa impulsos por segundo.
-        // Os ganhos terão de ser afinados com os motores reais.
-        const float correctionLeft = calculatePid(
-            rampLeft, measuredLeft,
+        // PID: correção em PWM a partir do erro de velocidade.
+        const float corrLeft = calculatePid(
+            targetLeft, measuredLeft,
             integralLeft, previousErrorLeft, dt);
 
-        const float correctionRight = calculatePid(
-            rampRight, measuredRight,
+        const float corrRight = calculatePid(
+            targetRight, measuredRight,
             integralRight, previousErrorRight, dt);
 
+        // Feedforward: PWM base estimado para atingir a velocidade alvo.
+        // Cada roda tem o seu FF (calibrado individualmente).
+        const float ffLeft = targetLeft * ArgusConfig::SPEED_FF_GAIN_LEFT;
+        const float ffRight = targetRight * ArgusConfig::SPEED_FF_GAIN_RIGHT;
+
+        // PWM final = Feedforward + Correção do PID.
         applyPwm(
-            clampPwm(rampLeft + correctionLeft),
-            clampPwm(rampRight + correctionRight));
+            clampPwm(ffLeft + corrLeft),
+            clampPwm(ffRight + corrRight));
     }
 
     void setSpeedPidGains(float newKp, float newKi, float newKd)
@@ -268,7 +248,7 @@ namespace ArgusMotors
         previousLeftTicks = leftTicks;
         previousRightTicks = rightTicks;
 
-        previousUpdateMs = millis();
+        // previousUpdateMs = millis(); // ⚠️ NÃO DESCOMENTAR!
         controlEnabled = false;
 
         applyPwm(0, 0);
@@ -281,7 +261,7 @@ namespace ArgusMotors
 
         applyPwm(0, 0);
 
-        previousUpdateMs = millis();
+        // previousUpdateMs = millis(); // ⚠️ NÃO DESCOMENTAR!
 
         long rightTicks;
         long leftTicks;

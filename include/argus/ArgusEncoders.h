@@ -1,5 +1,6 @@
 #pragma once
-namespace ArgusEncoders {
+namespace ArgusEncoders
+{
     bool begin();
     void reset();
     long rightCount();
