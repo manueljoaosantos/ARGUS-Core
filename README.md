@@ -324,6 +324,14 @@ Comunicação serial com Raspberry Pi. Delegação de processamento avançado (A
 
 ---
 
+## 🎥 Demonstração
+
+[![ARGUS-Core Demo](https://i9.ytimg.com/vi/o9OrYTfS8gg/sddefault.jpg?v=6ad62828&sqp=CLzQ2NYG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4Ab4EgAKACIoCDAgAEAEYfyATKBMwDw==&rs=AOn4CLATcRTOdf5X-Awv6HWeXRLkcUU6Cg)](https://www.youtube.com/shorts/o9OrYTfS8gg)
+
+Vídeo de demonstração do segue linha com telemetria em tempo real.
+
+---
+
 ## 📜 Licença
 
 MIT License
