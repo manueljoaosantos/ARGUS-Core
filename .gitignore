@@ -1,18 +1,22 @@
-# Compiled files
-*.o
-*.elf
-*.bin
-*.hex
+# Credenciais
+include/argus/secrets.h
 
-# Arduino build
+# Build
+.pio/
 build/
-.sketch/
-
-# VSCode
-.vscode/
-
-# MacOS
-.DS_Store
+*.old
 
 # Logs
-*.log
+*.txt
+!README.md
+!CHANGELOG.md
+
+# Scripts temporários
+*.ps1
+
+# VS Code
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
