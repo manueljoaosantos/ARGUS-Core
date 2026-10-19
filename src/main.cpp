@@ -3,6 +3,7 @@
 #include "argus/ArgusMotors.h"
 #include "argus/ArgusEncoders.h"
 #include "argus/ArgusLineSensors.h"
+#include "argus/ArgusTelemetry.h"
 
 /*
  * ===================================================================
@@ -135,6 +136,8 @@ namespace
 
 void setup()
 {
+    // Inicia a telemetria Wi-Fi (usa as credenciais de secrets.h)
+    ArgusTelemetry::begin();
     Serial.begin(115200);
     delay(1500);
 
@@ -350,4 +353,7 @@ void loop()
     // ---------------------------------------------------------------
     debugPrint(DEBUG_MODE, modeName, lineDetected, wideLine,
                position, error, correction, pwmL, pwmR);
+
+    // Envia telemetria para os clientes Wi-Fi
+    ArgusTelemetry::sendData(position, error, correction, pwmL, pwmR, modeName);
 }

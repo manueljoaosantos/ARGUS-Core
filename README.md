@@ -225,6 +225,55 @@ Arquitetura híbrida ESP32 + processamento externo.
 
 ---
 
+### 08 - 🔐 Credenciais Wi-Fi
+
+O projeto usa um ficheiro `secrets.h` para guardar as credenciais Wi-Fi (SSID e password). Este ficheiro **não vai para o Git** (está no `.gitignore`).
+
+**Para configurar:**
+
+1. Copia o ficheiro de exemplo:
+
+   ```bash
+   cp include/argus/secrets.h.example include/argus/secrets.h
+   ```
+
+2. Edita o secrets.h com os teus dados:
+
+```cpp
+#define WIFI_SSID "ARGUS-Telemetry"
+#define WIFI_PASSWORD "argus1234"
+```
+
+NÃO commites o secrets.h (o .gitignore já o protege).
+
+---
+
+## 📋 Passo 9 — Testar
+
+1. **Compila e grava.**
+2. **No telemóvel/PC**, procura a rede **`ARGUS-Telemetry`**.
+3. **Liga-te** com a password **`argus1234`**.
+4. **Abre o browser** em **`http://192.168.4.1`**.
+
+---
+
+## 📊 Estrutura final
+
+ARGUS-Core/
+├── .gitignore ← atualizado
+├── include/
+│ └── argus/
+│ ├── secrets.h ← NOVO (ignorado pelo Git)
+│ ├── secrets.h.example ← NOVO (vai para o Git)
+│ ├── ArgusTelemetry.h ← NOVO
+│ └── ... (restantes)
+├── lib/
+│ └── ArgusTelemetry/ ← NOVO
+│ └── src/
+│ └── ArgusTelemetry.cpp ← NOVO
+└── src/
+└── main.cpp ← atualizado
+
 ## 🚀 Próximos Passos
 
 - [ ] Testar curvas mais apertadas (raio pequeno)
