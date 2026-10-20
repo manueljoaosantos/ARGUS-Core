@@ -121,22 +121,20 @@ namespace ArgusMotors
 
     void setForward()
     {
-        // Canal A = motor DIREITO (lógica invertida após troca de pinos)
+        // Canal A = motor DIREITO
         digitalWrite(ArgusConfig::AIN1, HIGH);
         digitalWrite(ArgusConfig::AIN2, LOW);
 
-        // Canal B = motor ESQUERDO (lógica invertida após troca de pinos)
+        // Canal B = motor ESQUERDO
         digitalWrite(ArgusConfig::BIN1, LOW);
         digitalWrite(ArgusConfig::BIN2, HIGH);
     }
 
     void setRightRotation()
     {
-        // Canal A = motor DIREITO
         digitalWrite(ArgusConfig::AIN1, HIGH);
         digitalWrite(ArgusConfig::AIN2, LOW);
 
-        // Canal B = motor ESQUERDO
         digitalWrite(ArgusConfig::BIN1, HIGH);
         digitalWrite(ArgusConfig::BIN2, LOW);
     }
@@ -165,12 +163,6 @@ namespace ArgusMotors
             stop();
             return;
         }
-
-        // ⚠️ NÃO ATUALIZAR previousUpdateMs AQUI!
-        // Se atualizarmos aqui, o PID nunca corre porque o loop
-        // chama setTargetSpeeds() a cada iteração (menos de 10ms).
-        // O previousUpdateMs só deve ser atualizado no updateSpeedControl().
-        // (Este foi o bug que manteve os motores parados durante muito tempo).
     }
 
     void updateSpeedControl()
@@ -181,9 +173,6 @@ namespace ArgusMotors
         const uint32_t now = millis();
         const uint32_t elapsedMs = now - previousUpdateMs;
 
-        // ⚠️ O PID só corre a cada CONTROL_INTERVAL_MS.
-        // O previousUpdateMs só é atualizado AQUI (nunca em setTargetSpeeds).
-        // Isto é CRÍTICO para o PID funcionar.
         if (elapsedMs < ArgusConfig::CONTROL_INTERVAL_MS)
             return;
 
@@ -201,11 +190,9 @@ namespace ArgusMotors
         previousLeftTicks = leftTicks;
         previousRightTicks = rightTicks;
 
-        // Velocidade medida em pulsos/s.
         const float measuredLeft = deltaLeft / dt;
         const float measuredRight = deltaRight / dt;
 
-        // PID: correção em PWM a partir do erro de velocidade.
         const float corrLeft = calculatePid(
             targetLeft, measuredLeft,
             integralLeft, previousErrorLeft, dt);
@@ -214,12 +201,9 @@ namespace ArgusMotors
             targetRight, measuredRight,
             integralRight, previousErrorRight, dt);
 
-        // Feedforward: PWM base estimado para atingir a velocidade alvo.
-        // Cada roda tem o seu FF (calibrado individualmente).
         const float ffLeft = targetLeft * ArgusConfig::SPEED_FF_GAIN_LEFT;
         const float ffRight = targetRight * ArgusConfig::SPEED_FF_GAIN_RIGHT;
 
-        // PWM final = Feedforward + Correção do PID.
         applyPwm(
             clampPwm(ffLeft + corrLeft),
             clampPwm(ffRight + corrRight));
@@ -248,9 +232,7 @@ namespace ArgusMotors
         previousLeftTicks = leftTicks;
         previousRightTicks = rightTicks;
 
-        // previousUpdateMs = millis(); // ⚠️ NÃO DESCOMENTAR!
         controlEnabled = false;
-
         applyPwm(0, 0);
     }
 
@@ -261,8 +243,6 @@ namespace ArgusMotors
 
         applyPwm(0, 0);
 
-        // previousUpdateMs = millis(); // ⚠️ NÃO DESCOMENTAR!
-
         long rightTicks;
         long leftTicks;
         ArgusEncoders::readCounts(rightTicks, leftTicks);
@@ -270,4 +250,44 @@ namespace ArgusMotors
         previousLeftTicks = leftTicks;
         previousRightTicks = rightTicks;
     }
+
+    void setSpin(int pwm)
+    {
+        controlEnabled = false;
+        clearControllerState();
+
+        int absPwm = constrain(abs(pwm), 0, (int)ArgusConfig::PWM_LIMIT);
+
+        if (pwm > 0)
+        {
+            // Virar à DIREITA: Esquerda para a frente, Direita para trás
+            digitalWrite(ArgusConfig::BIN1, LOW);
+            digitalWrite(ArgusConfig::BIN2, HIGH); // Esquerda frente
+
+            digitalWrite(ArgusConfig::AIN1, LOW);
+            digitalWrite(ArgusConfig::AIN2, HIGH); // Direita trás (invertido)
+
+            ledcWrite(ArgusConfig::PWMA, absPwm);
+            ledcWrite(ArgusConfig::PWMB, absPwm);
+        }
+        else if (pwm < 0)
+        {
+            // Virar à ESQUERDA: Esquerda para trás, Direita para a frente
+            digitalWrite(ArgusConfig::BIN1, HIGH);
+            digitalWrite(ArgusConfig::BIN2, LOW); // Esquerda trás (invertido)
+
+            digitalWrite(ArgusConfig::AIN1, HIGH);
+            digitalWrite(ArgusConfig::AIN2, LOW); // Direita frente
+
+            ledcWrite(ArgusConfig::PWMA, absPwm);
+            ledcWrite(ArgusConfig::PWMB, absPwm);
+        }
+        else
+        {
+            applyPwm(0, 0);
+        }
+    }
+
+    int getPwmLeft() { return currentLeftPwm; }
+    int getPwmRight() { return currentRightPwm; }
 }

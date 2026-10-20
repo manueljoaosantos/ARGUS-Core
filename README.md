@@ -330,6 +330,10 @@ Comunicação serial com Raspberry Pi. Delegação de processamento avançado (A
 
 Vídeo de demonstração do segue linha com telemetria em tempo real.
 
+[![ARGUS-Core Labirinto](https://i9.ytimg.com/vi_webp/lNOCNZfD8zc/sd3.webp?sqp=CKj42NYG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4Ab4EgAKACIoCDAgAEAEYZSBlKGUwDw==&rs=AOn4CLDp3KXTbxRiOBCHuGDC9Etedk_W8A)](https://www.youtube.com/shorts/lNOCNZfD8zc)
+
+Vídeo de demonstração do labirinto com Regra da Mão Direita.
+
 ---
 
 ## 📜 Licença
