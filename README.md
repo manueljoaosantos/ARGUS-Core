@@ -324,13 +324,17 @@ Comunicação serial com Raspberry Pi. Delegação de processamento avançado (A
 
 ---
 
-## 🎥 Demonstração
+## 🎥 Demonstrações
 
 [![ARGUS-Core Demo](https://i9.ytimg.com/vi/o9OrYTfS8gg/sddefault.jpg?v=6ad62828&sqp=CLzQ2NYG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4Ab4EgAKACIoCDAgAEAEYfyATKBMwDw==&rs=AOn4CLATcRTOdf5X-Awv6HWeXRLkcUU6Cg)](https://www.youtube.com/shorts/o9OrYTfS8gg)
 
 Vídeo de demonstração do segue linha com telemetria em tempo real.
 
-[![ARGUS-Core Labirinto](https://i9.ytimg.com/vi_webp/lNOCNZfD8zc/sd3.webp?sqp=CKj42NYG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4Ab4EgAKACIoCDAgAEAEYZSBlKGUwDw==&rs=AOn4CLDp3KXTbxRiOBCHuGDC9Etedk_W8A)](https://www.youtube.com/shorts/lNOCNZfD8zc)
+**Episódios:**
+
+1. [![ARGUS-Core Labirinto](https://i9.ytimg.com/vi_webp/lNOCNZfD8zc/sd3.webp?sqp=CKj42NYG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4Ab4EgAKACIoCDAgAEAEYZSBlKGUwDw==&rs=AOn4CLDp3KXTbxRiOBCHuGDC9Etedk_W8A)](https://www.youtube.com/shorts/lNOCNZfD8zc)
+
+2. [![ARGUS-Core Labirinto](https://i9.ytimg.com/vi_webp/lUfjetvouYY/sd2.webp?sqp=CLSI49YG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4Ab4EgAKACIoCDAgAEAEYZSBUKEQwDw==&rs=AOn4CLBYrtRnSKVx5309IbaRX-84iMzLnw)](https://youtube.com/shorts/lUfjetvouYY)
 
 Vídeo de demonstração do labirinto com Regra da Mão Direita.
 
