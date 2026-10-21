@@ -21,9 +21,9 @@ namespace ArgusMaze
         bool sawLeft = false;
         bool sawStraight = false;
 
-        constexpr int PWM_FOLLOW = 60;
-        constexpr int PWM_SPIN = 60;
-        constexpr int PWM_CHECK = 55;
+        constexpr int PWM_FOLLOW = 70;
+        constexpr int PWM_SPIN = 65;
+        constexpr int PWM_CHECK = 60;
         constexpr int TICKS_90 = 310;
         constexpr int TICKS_180 = TICKS_90 * 2;
         constexpr uint32_t TURN_TIMEOUT_MS = 1500;
@@ -33,11 +33,20 @@ namespace ArgusMaze
         void setState(State newState)
         {
             currentState = newState;
-            stateTimer = millis();
+            const uint32_t now = millis(); // <-- millis() uma só vez
+            stateTimer = now;
+
             if (newState == State::TurnLeft || newState == State::TurnRight || newState == State::TurnAround)
             {
-                turnStartTime = millis();
+                turnStartTime = now;
                 lostLineTime = 0;
+
+                // Garantir targetTicks correto para TurnAround
+                if (newState == State::TurnAround)
+                {
+                    targetTicks = TICKS_180;
+                    startTicks = ArgusEncoders::leftCount();
+                }
             }
         }
 
@@ -83,6 +92,7 @@ namespace ArgusMaze
                 break;
             }
 
+            // 1. Deteção de Cruzamento (T ou +) - TEM PRIORIDADE
             if (wideLine)
             {
                 sawRight = false;
@@ -93,6 +103,7 @@ namespace ArgusMaze
                 break;
             }
 
+            // 2. Deteção de Curva Apertada (L) - Só se NÃO for wideLine
             if (position < 500)
             {
                 stopMotors();
@@ -111,7 +122,7 @@ namespace ArgusMaze
             }
 
             int pwmBase = PWM_FOLLOW;
-            float correction = 0.04f * error;
+            float correction = 0.045f * error;
             correction = constrain(correction, -35, 35);
 
             int pwmL = pwmBase - (int)correction;
@@ -145,6 +156,7 @@ namespace ArgusMaze
                     sawStraight = true;
             }
 
+            // Decisão principal (após 400ms) OU saída antecipada (após 300ms)
             if (millis() - stateTimer > 400)
             {
                 stopMotors();
@@ -173,9 +185,9 @@ namespace ArgusMaze
                     setState(State::TurnRight);
                 }
             }
-
-            if (!lineDetected && (millis() - stateTimer > 300))
+            else if (!lineDetected && (millis() - stateTimer > 300))
             {
+                // Saída antecipada se perder a linha
                 stopMotors();
                 if (sawRight)
                 {
@@ -209,15 +221,13 @@ namespace ArgusMaze
                 break;
             }
 
-            // Se perdeu a linha, continua a rodar
             if (!lineDetected)
             {
                 if (lostLineTime == 0)
                     lostLineTime = millis();
-                // Se perdeu a linha há muito tempo, tenta continuar a rodar (sem delay)
                 if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
                 {
-                    lostLineTime = 0; // reset
+                    lostLineTime = 0;
                 }
             }
             else

@@ -258,29 +258,35 @@ namespace ArgusMotors
 
         int absPwm = constrain(abs(pwm), 0, (int)ArgusConfig::PWM_LIMIT);
 
-        if (pwm > 0)
+        if (pwm > 0) // Virar à DIREITA
         {
-            // Virar à DIREITA: Esquerda para a frente, Direita para trás
+            // Esquerda para a FRENTE, Direita para TRÁS
+            // Compensação: Esquerda é mais fraca, damos +20 PWM
+            int pwmLeft = constrain(absPwm + 20, 0, 100);
+            int pwmRight = absPwm;
+
             digitalWrite(ArgusConfig::BIN1, LOW);
             digitalWrite(ArgusConfig::BIN2, HIGH); // Esquerda frente
+            ledcWrite(ArgusConfig::PWMB, pwmLeft); // ESQUERDO -> PWMB
 
             digitalWrite(ArgusConfig::AIN1, LOW);
-            digitalWrite(ArgusConfig::AIN2, HIGH); // Direita trás (invertido)
-
-            ledcWrite(ArgusConfig::PWMA, absPwm);
-            ledcWrite(ArgusConfig::PWMB, absPwm);
+            digitalWrite(ArgusConfig::AIN2, HIGH);  // Direita trás
+            ledcWrite(ArgusConfig::PWMA, pwmRight); // DIREITO -> PWMA
         }
-        else if (pwm < 0)
+        else if (pwm < 0) // Virar à ESQUERDA
         {
-            // Virar à ESQUERDA: Esquerda para trás, Direita para a frente
+            // Esquerda para TRÁS, Direita para FRENTE
+            // Compensação: Esquerda é mais fraca, damos +35 PWM (mais porque vai para trás)
+            int pwmLeft = constrain(absPwm + 35, 0, 100);
+            int pwmRight = absPwm;
+
             digitalWrite(ArgusConfig::BIN1, HIGH);
-            digitalWrite(ArgusConfig::BIN2, LOW); // Esquerda trás (invertido)
+            digitalWrite(ArgusConfig::BIN2, LOW);  // Esquerda trás
+            ledcWrite(ArgusConfig::PWMB, pwmLeft); // ESQUERDO -> PWMB
 
             digitalWrite(ArgusConfig::AIN1, HIGH);
-            digitalWrite(ArgusConfig::AIN2, LOW); // Direita frente
-
-            ledcWrite(ArgusConfig::PWMA, absPwm);
-            ledcWrite(ArgusConfig::PWMB, absPwm);
+            digitalWrite(ArgusConfig::AIN2, LOW);   // Direita frente
+            ledcWrite(ArgusConfig::PWMA, pwmRight); // DIREITO -> PWMA
         }
         else
         {
