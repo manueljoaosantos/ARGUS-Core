@@ -16,6 +16,7 @@ namespace ArgusMaze
         long startTicks = 0;
         uint32_t turnStartTime = 0;
         uint32_t lostLineTime = 0;
+        float lastKnownPosition = ArgusConfig::CENTER_POSITION;
 
         bool sawRight = false;
         bool sawLeft = false;
@@ -24,16 +25,19 @@ namespace ArgusMaze
         constexpr int PWM_FOLLOW = 70;
         constexpr int PWM_SPIN = 65;
         constexpr int PWM_CHECK = 60;
+        constexpr int PWM_RECOVER = 40; // Força para recuperar
         constexpr int TICKS_90 = 310;
         constexpr int TICKS_180 = TICKS_90 * 2;
         constexpr uint32_t TURN_TIMEOUT_MS = 1500;
         constexpr uint32_t MIN_TURN_TIME_MS = 100;
         constexpr uint32_t LOST_LINE_TIMEOUT_MS = 300;
+        constexpr uint32_t BRAKE_TIME_MS = 20;
+        constexpr uint32_t RECOVER_TIMEOUT_MS = 500;
 
         void setState(State newState)
         {
             currentState = newState;
-            const uint32_t now = millis(); // <-- millis() uma só vez
+            const uint32_t now = millis();
             stateTimer = now;
 
             if (newState == State::TurnLeft || newState == State::TurnRight || newState == State::TurnAround)
@@ -41,7 +45,6 @@ namespace ArgusMaze
                 turnStartTime = now;
                 lostLineTime = 0;
 
-                // Garantir targetTicks correto para TurnAround
                 if (newState == State::TurnAround)
                 {
                     targetTicks = TICKS_180;
@@ -54,12 +57,61 @@ namespace ArgusMaze
         {
             ArgusMotors::stop();
         }
+
+        void handleTurn(int spinPwm, long encoderCount, uint32_t minTimeOffset,
+                        const bool lineDetected, const bool wideLine, const float position)
+        {
+            if (millis() - turnStartTime > TURN_TIMEOUT_MS)
+            {
+                stopMotors();
+                setState(State::FollowLine);
+                return;
+            }
+
+            if (!lineDetected)
+            {
+                if (lostLineTime == 0)
+                    lostLineTime = millis();
+                if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
+                    lostLineTime = 0;
+            }
+            else
+            {
+                lostLineTime = 0;
+            }
+
+            ArgusMotors::setSpin(spinPwm);
+
+            if (millis() - turnStartTime > (MIN_TURN_TIME_MS + minTimeOffset))
+            {
+                if (lineDetected && !wideLine && position > 2500 && position < 4500)
+                {
+                    // Solução 2: Contra-spin para travar
+                    ArgusMotors::setSpin(-spinPwm);
+                    delay(BRAKE_TIME_MS);
+
+                    stopMotors();
+                    setState(State::FollowLine);
+                    return;
+                }
+            }
+
+            if (abs(encoderCount - startTicks) >= targetTicks)
+            {
+                ArgusMotors::setSpin(-spinPwm);
+                delay(BRAKE_TIME_MS);
+
+                stopMotors();
+                setState(State::FollowLine);
+            }
+        }
     }
 
     void begin()
     {
         currentState = State::FollowLine;
         stateTimer = millis();
+        lastKnownPosition = ArgusConfig::CENTER_POSITION;
     }
 
     State getState()
@@ -71,6 +123,7 @@ namespace ArgusMaze
     {
         currentState = State::FollowLine;
         stateTimer = millis();
+        lastKnownPosition = ArgusConfig::CENTER_POSITION;
     }
 
     void update()
@@ -85,14 +138,38 @@ namespace ArgusMaze
 
         case State::FollowLine:
         {
+            // Solução 1: Recuperação se perder a linha
             if (!lineDetected)
             {
-                stopMotors();
-                setState(State::Stopped);
-                break;
+                if (lostLineTime == 0)
+                    lostLineTime = millis();
+
+                if (millis() - lostLineTime < RECOVER_TIMEOUT_MS)
+                {
+                    // Gira devagar para o lado da última posição conhecida
+                    if (lastKnownPosition < ArgusConfig::CENTER_POSITION)
+                    {
+                        ArgusMotors::setSpin(-PWM_RECOVER);
+                    }
+                    else
+                    {
+                        ArgusMotors::setSpin(PWM_RECOVER);
+                    }
+                    break;
+                }
+                else
+                {
+                    stopMotors();
+                    setState(State::Stopped);
+                    break;
+                }
+            }
+            else
+            {
+                lostLineTime = 0;
+                lastKnownPosition = position;
             }
 
-            // 1. Deteção de Cruzamento (T ou +) - TEM PRIORIDADE
             if (wideLine)
             {
                 sawRight = false;
@@ -103,7 +180,6 @@ namespace ArgusMaze
                 break;
             }
 
-            // 2. Deteção de Curva Apertada (L) - Só se NÃO for wideLine
             if (position < 500)
             {
                 stopMotors();
@@ -122,7 +198,7 @@ namespace ArgusMaze
             }
 
             int pwmBase = PWM_FOLLOW;
-            float correction = 0.045f * error;
+            float correction = 0.04f * error;
             correction = constrain(correction, -35, 35);
 
             int pwmL = pwmBase - (int)correction;
@@ -156,7 +232,6 @@ namespace ArgusMaze
                     sawStraight = true;
             }
 
-            // Decisão principal (após 400ms) OU saída antecipada (após 300ms)
             if (millis() - stateTimer > 400)
             {
                 stopMotors();
@@ -179,7 +254,6 @@ namespace ArgusMaze
                 }
                 else
                 {
-                    // Fallback: assume T e vira à direita (Regra da Mão Direita)
                     startTicks = ArgusEncoders::rightCount();
                     targetTicks = TICKS_90;
                     setState(State::TurnRight);
@@ -187,7 +261,6 @@ namespace ArgusMaze
             }
             else if (!lineDetected && (millis() - stateTimer > 300))
             {
-                // Saída antecipada se perder a linha
                 stopMotors();
                 if (sawRight)
                 {
@@ -203,7 +276,6 @@ namespace ArgusMaze
                 }
                 else
                 {
-                    // Fallback: assume T e vira à direita
                     startTicks = ArgusEncoders::rightCount();
                     targetTicks = TICKS_90;
                     setState(State::TurnRight);
@@ -213,136 +285,19 @@ namespace ArgusMaze
         }
 
         case State::TurnRight:
-        {
-            if (millis() - turnStartTime > TURN_TIMEOUT_MS)
-            {
-                stopMotors();
-                setState(State::FollowLine);
-                break;
-            }
-
-            if (!lineDetected)
-            {
-                if (lostLineTime == 0)
-                    lostLineTime = millis();
-                if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
-                {
-                    lostLineTime = 0;
-                }
-            }
-            else
-            {
-                lostLineTime = 0;
-            }
-
-            ArgusMotors::setSpin(PWM_SPIN);
-
-            if (millis() - turnStartTime > MIN_TURN_TIME_MS)
-            {
-                if (lineDetected && !wideLine && position > 2500 && position < 4500)
-                {
-                    stopMotors();
-                    setState(State::FollowLine);
-                    break;
-                }
-            }
-
-            long currentTicks = abs(ArgusEncoders::leftCount() - startTicks);
-            if (currentTicks >= targetTicks)
-            {
-                stopMotors();
-                setState(State::FollowLine);
-            }
+            handleTurn(PWM_SPIN, ArgusEncoders::leftCount(), 0,
+                       lineDetected, wideLine, position);
             break;
-        }
 
         case State::TurnLeft:
-        {
-            if (millis() - turnStartTime > TURN_TIMEOUT_MS)
-            {
-                stopMotors();
-                setState(State::FollowLine);
-                break;
-            }
-
-            if (!lineDetected)
-            {
-                if (lostLineTime == 0)
-                    lostLineTime = millis();
-                if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
-                {
-                    lostLineTime = 0;
-                }
-            }
-            else
-            {
-                lostLineTime = 0;
-            }
-
-            ArgusMotors::setSpin(-PWM_SPIN);
-
-            if (millis() - turnStartTime > MIN_TURN_TIME_MS)
-            {
-                if (lineDetected && !wideLine && position > 2500 && position < 4500)
-                {
-                    stopMotors();
-                    setState(State::FollowLine);
-                    break;
-                }
-            }
-
-            long currentTicks = abs(ArgusEncoders::rightCount() - startTicks);
-            if (currentTicks >= targetTicks)
-            {
-                stopMotors();
-                setState(State::FollowLine);
-            }
+            handleTurn(-PWM_SPIN, ArgusEncoders::rightCount(), 0,
+                       lineDetected, wideLine, position);
             break;
-        }
 
         case State::TurnAround:
-        {
-            if (millis() - turnStartTime > TURN_TIMEOUT_MS)
-            {
-                stopMotors();
-                setState(State::FollowLine);
-                break;
-            }
-
-            if (!lineDetected)
-            {
-                if (lostLineTime == 0)
-                    lostLineTime = millis();
-                if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
-                {
-                    lostLineTime = 0;
-                }
-            }
-            else
-            {
-                lostLineTime = 0;
-            }
-
-            ArgusMotors::setSpin(PWM_SPIN);
-
-            if (millis() - turnStartTime > (MIN_TURN_TIME_MS + 100))
-            {
-                if (lineDetected && !wideLine && position > 2500 && position < 4500)
-                {
-                    stopMotors();
-                    setState(State::FollowLine);
-                    break;
-                }
-            }
-
-            long currentTicks = abs(ArgusEncoders::leftCount() - startTicks);
-            if (currentTicks >= targetTicks)
-            {
-                stopMotors();
-                setState(State::FollowLine);
-            }
+            handleTurn(PWM_SPIN, ArgusEncoders::leftCount(), 100,
+                       lineDetected, wideLine, position);
             break;
-        }
 
         case State::Arrived:
         case State::Stopped:
