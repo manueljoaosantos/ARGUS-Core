@@ -15,6 +15,7 @@ namespace ArgusMaze
         int targetTicks = 0;
         long startTicks = 0;
         uint32_t turnStartTime = 0;
+        uint32_t lostLineTime = 0;
 
         bool sawRight = false;
         bool sawLeft = false;
@@ -23,10 +24,11 @@ namespace ArgusMaze
         constexpr int PWM_FOLLOW = 60;
         constexpr int PWM_SPIN = 60;
         constexpr int PWM_CHECK = 55;
-        constexpr int PWM_ALIGN = 40; // Velocidade lenta para alinhar
         constexpr int TICKS_90 = 310;
         constexpr int TICKS_180 = TICKS_90 * 2;
         constexpr uint32_t TURN_TIMEOUT_MS = 1500;
+        constexpr uint32_t MIN_TURN_TIME_MS = 100;
+        constexpr uint32_t LOST_LINE_TIMEOUT_MS = 300;
 
         void setState(State newState)
         {
@@ -35,6 +37,7 @@ namespace ArgusMaze
             if (newState == State::TurnLeft || newState == State::TurnRight || newState == State::TurnAround)
             {
                 turnStartTime = millis();
+                lostLineTime = 0;
             }
         }
 
@@ -87,6 +90,23 @@ namespace ArgusMaze
                 sawStraight = false;
                 stopMotors();
                 setState(State::Wait);
+                break;
+            }
+
+            if (position < 500)
+            {
+                stopMotors();
+                startTicks = ArgusEncoders::rightCount();
+                targetTicks = TICKS_90;
+                setState(State::TurnLeft);
+                break;
+            }
+            else if (position > 6500)
+            {
+                stopMotors();
+                startTicks = ArgusEncoders::leftCount();
+                targetTicks = TICKS_90;
+                setState(State::TurnRight);
                 break;
             }
 
@@ -147,9 +167,10 @@ namespace ArgusMaze
                 }
                 else
                 {
-                    startTicks = ArgusEncoders::leftCount();
-                    targetTicks = TICKS_180;
-                    setState(State::TurnAround);
+                    // Fallback: assume T e vira à direita (Regra da Mão Direita)
+                    startTicks = ArgusEncoders::rightCount();
+                    targetTicks = TICKS_90;
+                    setState(State::TurnRight);
                 }
             }
 
@@ -170,9 +191,10 @@ namespace ArgusMaze
                 }
                 else
                 {
-                    startTicks = ArgusEncoders::leftCount();
-                    targetTicks = TICKS_180;
-                    setState(State::TurnAround);
+                    // Fallback: assume T e vira à direita
+                    startTicks = ArgusEncoders::rightCount();
+                    targetTicks = TICKS_90;
+                    setState(State::TurnRight);
                 }
             }
             break;
@@ -183,17 +205,43 @@ namespace ArgusMaze
             if (millis() - turnStartTime > TURN_TIMEOUT_MS)
             {
                 stopMotors();
-                setState(State::AlignLine);
+                setState(State::FollowLine);
                 break;
             }
 
+            // Se perdeu a linha, continua a rodar
+            if (!lineDetected)
+            {
+                if (lostLineTime == 0)
+                    lostLineTime = millis();
+                // Se perdeu a linha há muito tempo, tenta continuar a rodar (sem delay)
+                if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
+                {
+                    lostLineTime = 0; // reset
+                }
+            }
+            else
+            {
+                lostLineTime = 0;
+            }
+
             ArgusMotors::setSpin(PWM_SPIN);
+
+            if (millis() - turnStartTime > MIN_TURN_TIME_MS)
+            {
+                if (lineDetected && !wideLine && position > 2500 && position < 4500)
+                {
+                    stopMotors();
+                    setState(State::FollowLine);
+                    break;
+                }
+            }
 
             long currentTicks = abs(ArgusEncoders::leftCount() - startTicks);
             if (currentTicks >= targetTicks)
             {
                 stopMotors();
-                setState(State::AlignLine); // <-- Vai para alinhar
+                setState(State::FollowLine);
             }
             break;
         }
@@ -203,17 +251,41 @@ namespace ArgusMaze
             if (millis() - turnStartTime > TURN_TIMEOUT_MS)
             {
                 stopMotors();
-                setState(State::AlignLine);
+                setState(State::FollowLine);
                 break;
             }
 
+            if (!lineDetected)
+            {
+                if (lostLineTime == 0)
+                    lostLineTime = millis();
+                if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
+                {
+                    lostLineTime = 0;
+                }
+            }
+            else
+            {
+                lostLineTime = 0;
+            }
+
             ArgusMotors::setSpin(-PWM_SPIN);
+
+            if (millis() - turnStartTime > MIN_TURN_TIME_MS)
+            {
+                if (lineDetected && !wideLine && position > 2500 && position < 4500)
+                {
+                    stopMotors();
+                    setState(State::FollowLine);
+                    break;
+                }
+            }
 
             long currentTicks = abs(ArgusEncoders::rightCount() - startTicks);
             if (currentTicks >= targetTicks)
             {
                 stopMotors();
-                setState(State::AlignLine); // <-- Vai para alinhar
+                setState(State::FollowLine);
             }
             break;
         }
@@ -223,46 +295,38 @@ namespace ArgusMaze
             if (millis() - turnStartTime > TURN_TIMEOUT_MS)
             {
                 stopMotors();
-                setState(State::AlignLine);
-                break;
-            }
-
-            ArgusMotors::setSpin(PWM_SPIN);
-
-            long currentTicks = abs(ArgusEncoders::leftCount() - startTicks);
-            if (currentTicks >= targetTicks)
-            {
-                stopMotors();
-                setState(State::AlignLine); // <-- Vai para alinhar
-            }
-            break;
-        }
-
-        case State::AlignLine:
-        {
-            // Se perdeu a linha de todo, para
-            if (!lineDetected)
-            {
-                stopMotors();
-                setState(State::Stopped);
-                break;
-            }
-
-            // Se a linha está perfeitamente centrada (POS entre 3000 e 4000)
-            // OU se o robô já andou o suficiente para se alinhar
-            if (position > 3000 && position < 4000)
-            {
-                stopMotors();
                 setState(State::FollowLine);
                 break;
             }
 
-            // Avança devagar para se alinhar
-            ArgusMotors::setForward();
-            ArgusMotors::setSpeeds(PWM_ALIGN, PWM_ALIGN);
+            if (!lineDetected)
+            {
+                if (lostLineTime == 0)
+                    lostLineTime = millis();
+                if (millis() - lostLineTime > LOST_LINE_TIMEOUT_MS)
+                {
+                    lostLineTime = 0;
+                }
+            }
+            else
+            {
+                lostLineTime = 0;
+            }
 
-            // Se demorar mais de 1s a alinhar, desiste e volta ao FollowLine
-            if (millis() - stateTimer > 1000)
+            ArgusMotors::setSpin(PWM_SPIN);
+
+            if (millis() - turnStartTime > (MIN_TURN_TIME_MS + 100))
+            {
+                if (lineDetected && !wideLine && position > 2500 && position < 4500)
+                {
+                    stopMotors();
+                    setState(State::FollowLine);
+                    break;
+                }
+            }
+
+            long currentTicks = abs(ArgusEncoders::leftCount() - startTicks);
+            if (currentTicks >= targetTicks)
             {
                 stopMotors();
                 setState(State::FollowLine);
