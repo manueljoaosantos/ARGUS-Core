@@ -30,4 +30,10 @@ namespace ArgusMotors
 
     // Para os motores e cancela os alvos de velocidade.
     void stop();
+
+    int getPwmLeft();
+    int getPwmRight();
+
+    // Roda no próprio eixo (spin). Positivo = direita, Negativo = esquerda.
+    void setSpin(int pwm);
 }
